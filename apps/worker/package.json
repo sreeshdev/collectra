@@ -1,0 +1,28 @@
+{
+  "name": "dish-hobby-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:generate": "prisma generate --schema=../../prisma/schema.prisma",
+    "db:migrate": "./load-env.sh prisma migrate deploy --schema=../../prisma/schema.prisma",
+    "db:migrate:dev": "./load-env.sh prisma migrate dev --schema=../../prisma/schema.prisma",
+    "db:studio": "./load-env.sh prisma studio --schema=../../prisma/schema.prisma",
+    "db:seed": "./load-env.sh npx tsx ../../prisma/seed.ts"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.0",
+    "@prisma/adapter-neon": "^5.7.1",
+    "@prisma/client": "^5.7.1",
+    "hono": "^3.11.7",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "prisma": "^5.7.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.19.0"
+  }
+}

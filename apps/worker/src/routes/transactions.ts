@@ -1,0 +1,203 @@
+import { Hono } from 'hono';
+import { z } from 'zod';
+import { authMiddleware, adminOnly } from '../middleware/auth';
+import { getPrisma } from '../utils/prisma';
+
+const manualTransactionSchema = z.object({
+  customerId: z.string().uuid(),
+  amount: z.number().positive(),
+  remarks: z.string().optional(),
+});
+
+const transactions = new Hono().basePath('/transactions');
+
+
+// Get all transactions with filters
+transactions.get('/', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user');
+    const month = c.req.query('month');
+    const year = c.req.query('year');
+    
+    if (!month || !year) {
+      return c.json({ error: 'Month and year are required' }, 400);
+    }
+    
+    const prisma = getPrisma(c.env);
+    
+    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+    
+    const where: any = {
+      transactionDate: {
+        gte: startDate,
+        lte: endDate,
+      },
+    };
+    
+    // Employee can only see transactions for assigned customers and their own transactions
+    if (user.role === 'EMPLOYEE') {
+      const assignedCustomers = await prisma.customer.findMany({
+        where: { assignedEmployeeId: user.id },
+        select: { id: true },
+      });
+      
+      where.OR = [
+        { customerId: { in: assignedCustomers.map(c => c.id) } },
+        { transactionBy: user.id },
+      ];
+    }
+    
+    const transactions = await prisma.transaction.findMany({
+      where,
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            boxNumber: true,
+            mobile: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true,
+          },
+        },
+      },
+      orderBy: { transactionDate: 'desc' },
+    });
+    
+    return c.json({ transactions });
+  } catch (error: any) {
+    return c.json({ error: error.message || 'Failed to fetch transactions' }, 500);
+  }
+});
+
+// Export transactions as Excel (Admin only)
+transactions.get('/export', authMiddleware, adminOnly, async (c) => {
+  try {
+    const month = c.req.query('month');
+    const year = c.req.query('year');
+    
+    if (!month || !year) {
+      return c.json({ error: 'Month and year are required' }, 400);
+    }
+    
+    const prisma = getPrisma(c.env);
+    
+    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+    
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        transactionDate: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        customer: {
+          select: {
+            name: true,
+            boxNumber: true,
+            mobile: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            mobile: true,
+          },
+        },
+      },
+      orderBy: { transactionDate: 'desc' },
+    });
+    
+    // Generate CSV (simplified - in production use a proper Excel library)
+    const headers = ['Customer Name', 'Box Number', 'Transaction ID', 'Date', 'Type', 'Amount', 'Status', 'Collected By'];
+    const rows = transactions.map(t => [
+      t.customer.name,
+      t.customer.boxNumber,
+      t.transactionId,
+      t.transactionDate.toISOString(),
+      t.transactionType,
+      t.amount.toString(),
+      t.status,
+      t.user.name,
+    ]);
+    
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    
+    // Set headers for file download with CORS
+    c.header('Content-Type', 'text/csv; charset=utf-8');
+    c.header('Content-Disposition', `attachment; filename="transactions-${month}-${year}.csv"`);
+    
+    return c.text(csv);
+  } catch (error: any) {
+    return c.json({ error: error.message || 'Failed to export transactions' }, 500);
+  }
+});
+
+// Create manual transaction
+transactions.post('/manual', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user');
+    const body = await c.req.json();
+    const { customerId, amount, remarks } = manualTransactionSchema.parse(body);
+    
+    const prisma = getPrisma(c.env);
+    
+    // Check customer exists
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+    });
+    
+    if (!customer) {
+      return c.json({ error: 'Customer not found' }, 404);
+    }
+    
+    // Employee can only collect for assigned customers
+    if (user.role === 'EMPLOYEE' && customer.assignedEmployeeId !== user.id) {
+      return c.json({ error: 'Forbidden - You can only collect for assigned customers' }, 403);
+    }
+    
+    // Check if amount exceeds pending balance
+    const pendingBalance = Number(customer.pendingBalance);
+    if (amount > pendingBalance) {
+      return c.json({ error: 'Amount exceeds pending balance' }, 400);
+    }
+    
+    // Create transaction
+    const transaction = await prisma.transaction.create({
+      data: {
+        customerId,
+        transactionId: `MANUAL-${Date.now()}`,
+        transactionType: 'manual',
+        transactionBy: user.id,
+        amount,
+        status: 'paid',
+        remarks,
+      },
+    });
+    
+    // Update customer pending balance
+    const newPendingBalance = Math.max(0, pendingBalance - amount);
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: { pendingBalance: newPendingBalance },
+    });
+    
+    return c.json({ transaction }, 201);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return c.json({ error: 'Validation error', details: error.errors }, 400);
+    }
+    return c.json({ error: error.message || 'Failed to create transaction' }, 500);
+  }
+});
+
+export default transactions;
+

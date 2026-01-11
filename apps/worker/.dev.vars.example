@@ -1,0 +1,11 @@
+DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require"
+DIRECT_URL="postgresql://user:password@host:5432/database?sslmode=require"
+JWT_SECRET="your-secret-key-change-this-in-production"
+RAZORPAY_KEY_ID="your-razorpay-key-id"
+RAZORPAY_KEY_SECRET="your-razorpay-key-secret"
+RAZORPAY_WEBHOOK_SECRET="your-razorpay-webhook-secret"
+WHATSAPP_TOKEN="your-whatsapp-token"
+WHATSAPP_PHONE_NUMBER_ID="your-whatsapp-phone-number-id"
+WHATSAPP_TEMPLATE_NAME="payment_reminder"
+APP_BASE_URL="http://localhost:5173"
+

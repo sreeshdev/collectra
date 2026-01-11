@@ -1,0 +1,24 @@
+name = "dish-hobby-worker"
+main = "src/index.ts"
+compatibility_date = "2023-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cron trigger - runs on 5th of every month at 5 AM UTC (10:30 AM IST)
+[[triggers.crons]]
+cron = "0 5 5 * *"
+
+# Environment variables should be set via:
+# 1. Cloudflare Dashboard → Workers → Settings → Variables
+# 2. Or using: wrangler secret put VARIABLE_NAME
+#
+# Required variables:
+# - DATABASE_URL
+# - JWT_SECRET
+# - RAZORPAY_KEY_ID
+# - RAZORPAY_KEY_SECRET
+# - RAZORPAY_WEBHOOK_SECRET
+# - WHATSAPP_TOKEN
+# - WHATSAPP_PHONE_NUMBER_ID
+# - WHATSAPP_TEMPLATE_NAME
+# - APP_BASE_URL
+
