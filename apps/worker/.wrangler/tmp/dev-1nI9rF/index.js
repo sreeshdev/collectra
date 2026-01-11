@@ -6142,7 +6142,8 @@ var require_wasm2 = __commonJS({
         "sourceFilePath": "/Users/sreenaath/Desktop/owner/pay/prisma/schema.prisma"
       },
       "relativeEnvPaths": {
-        "rootEnvPath": null
+        "rootEnvPath": null,
+        "schemaEnvPath": "../../../apps/web/.env"
       },
       "relativePath": "../../../prisma",
       "clientVersion": "5.22.0",
@@ -6151,7 +6152,7 @@ var require_wasm2 = __commonJS({
         "db"
       ],
       "activeProvider": "postgresql",
-      "postinstall": false,
+      "postinstall": true,
       "inlineDatasources": {
         "db": {
           "url": {
@@ -6452,9 +6453,9 @@ var require_dist = __commonJS({
   }
 });
 
-// ../../node_modules/postgres-array/index.js
+// ../../node_modules/@prisma/adapter-neon/node_modules/postgres-array/index.js
 var require_postgres_array = __commonJS({
-  "../../node_modules/postgres-array/index.js"(exports) {
+  "../../node_modules/@prisma/adapter-neon/node_modules/postgres-array/index.js"(exports) {
     "use strict";
     init_checked_fetch();
     init_strip_cf_connecting_ip_header();
