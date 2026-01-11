@@ -120,8 +120,8 @@ export default function Customers() {
     try {
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:8787"
-        }/api/customers/export`,
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:8787/"
+        }api/customers/export`,
         {
           method: "GET",
           headers: {
