@@ -3,12 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Form, Input, InputNumber, Button, Card, message, AutoComplete, Space, Typography } from 'antd'
 import { DollarOutlined } from '@ant-design/icons'
 import api from '../utils/api'
-import { useAuth } from '../contexts/AuthContext'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 export default function ManualPayment() {
-  const { user } = useAuth()
   const [form] = Form.useForm()
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
   const [searchValue, setSearchValue] = useState('')
@@ -43,7 +41,7 @@ export default function ManualPayment() {
     },
   })
 
-  const handleCustomerSelect = (value: string, option: any) => {
+  const handleCustomerSelect = (_value: string, option: any) => {
     const customer = searchResults?.find((c: any) => c.id === option.key)
     if (customer) {
       setSelectedCustomer(customer)

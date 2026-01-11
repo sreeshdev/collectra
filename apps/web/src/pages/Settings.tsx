@@ -1,7 +1,6 @@
-import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Tabs, Form, Input, Button, Card, message, Upload, Space } from 'antd'
-import { UserOutlined, LockOutlined, UploadOutlined } from '@ant-design/icons'
+import { Tabs, Form, Input, Button, Card, message } from 'antd'
+import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import api from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -68,7 +67,7 @@ export default function Settings() {
                   form={profileForm}
                   onFinish={handleProfileSubmit}
                   layout="vertical"
-                  initialValues={user}
+                  initialValues={user || undefined}
                   style={{ maxWidth: 500 }}
                 >
                   <Form.Item name="name" label="Name" rules={[{ required: true }]}>

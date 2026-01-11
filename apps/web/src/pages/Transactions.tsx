@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { DatePicker, Button, Space, Tag, Select, message } from "antd";
+import { Button, Space, Tag, Select, message } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import ResponsiveTable from "../components/ResponsiveTable";
 import api from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
 import dayjs from "dayjs";
-import { startCase } from "lodash";
+// Helper function to format text
+const startCase = (str: string) => {
+  return str.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
+}
 export default function Transactions() {
   const { user } = useAuth();
   const [month, setMonth] = useState(dayjs().month() + 1);

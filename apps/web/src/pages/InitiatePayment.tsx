@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button, Modal, Checkbox, message, Space, Tag } from 'antd'
+import { Button, Modal, message, Tag } from 'antd'
 import { DollarOutlined } from '@ant-design/icons'
 import ResponsiveTable from '../components/ResponsiveTable'
 import api from '../utils/api'
-import type { CheckboxChangeEvent } from 'antd/es/checkbox'
 
 interface Customer {
   id: string
@@ -53,22 +52,6 @@ export default function InitiatePayment() {
     },
   })
 
-  const handleSelectAll = (e: CheckboxChangeEvent) => {
-    if (e.target.checked) {
-      setSelectedCustomerIds(customers?.map((c: Customer) => c.id) || [])
-    } else {
-      setSelectedCustomerIds([])
-    }
-  }
-
-  const handleSelectCustomer = (customerId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedCustomerIds([...selectedCustomerIds, customerId])
-    } else {
-      setSelectedCustomerIds(selectedCustomerIds.filter(id => id !== customerId))
-    }
-  }
-
   const handleInitiate = () => {
     if (selectedCustomerIds.length === 0) {
       message.warning('Please select at least one customer')
@@ -83,9 +66,19 @@ export default function InitiatePayment() {
 
   const rowSelection = {
     selectedRowKeys: selectedCustomerIds,
-    onSelectAll: handleSelectAll,
+    onSelectAll: (selected: boolean, selectedRows: Customer[]) => {
+      if (selected) {
+        setSelectedCustomerIds(customers?.map((c: Customer) => c.id) || [])
+      } else {
+        setSelectedCustomerIds([])
+      }
+    },
     onSelect: (record: Customer, selected: boolean) => {
-      handleSelectCustomer(record.id, selected)
+      if (selected) {
+        setSelectedCustomerIds([...selectedCustomerIds, record.id])
+      } else {
+        setSelectedCustomerIds(selectedCustomerIds.filter(id => id !== record.id))
+      }
     },
     getCheckboxProps: () => ({}),
   }

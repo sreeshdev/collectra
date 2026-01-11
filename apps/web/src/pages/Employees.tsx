@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, Modal, Form, Input, message, Space, Upload } from "antd";
-import { PlusOutlined, EditOutlined, UploadOutlined } from "@ant-design/icons";
+import { Button, Modal, Form, Input, message } from "antd";
+import { PlusOutlined, EditOutlined } from "@ant-design/icons";
 import ResponsiveTable from "../components/ResponsiveTable";
 import api from "../utils/api";
-import type { UploadFile } from "antd";
 
 interface Employee {
   id: string;
