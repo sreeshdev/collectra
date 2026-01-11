@@ -19662,11 +19662,11 @@ init_modules_watch_stub();
 var customerSchema = external_exports.object({
   name: external_exports.string().min(1),
   mobile: external_exports.string().length(10),
-  email: external_exports.string().email().optional(),
-  address: external_exports.string().optional(),
+  email: external_exports.string().email().nullable().optional(),
+  address: external_exports.string().nullable().optional(),
   whatsappMobile: external_exports.string().length(10),
   boxNumber: external_exports.string().min(1),
-  idNumber: external_exports.string().optional(),
+  idNumber: external_exports.string().nullable().optional(),
   packageId: external_exports.string().uuid(),
   assignedEmployeeId: external_exports.string().uuid().optional()
 });
@@ -19728,7 +19728,73 @@ customers.get("/search", authMiddleware, async (c) => {
     });
     return c.json({ customers: customers2 });
   } catch (error) {
-    return c.json({ error: error.message || "Failed to search customers" }, 500);
+    return c.json(
+      { error: error.message || "Failed to search customers" },
+      500
+    );
+  }
+});
+customers.get("/export", authMiddleware, adminOnly, async (c) => {
+  try {
+    const prisma = getPrisma(c.env);
+    const customers2 = await prisma.customer.findMany({
+      include: {
+        package: true,
+        assignedEmployee: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+    const headers = [
+      "Name",
+      "Mobile",
+      "Email",
+      "Address",
+      "WhatsApp Mobile",
+      "Box Number",
+      "ID Number",
+      "Package Name",
+      "Employee Name",
+      "Pending Balance",
+      "Created At"
+    ];
+    const rows = customers2.map((customer) => [
+      customer.name || "",
+      customer.mobile || "",
+      customer.email || "",
+      customer.address || "",
+      customer.whatsappMobile || "",
+      customer.boxNumber || "",
+      customer.idNumber || "",
+      customer.package?.name || "",
+      customer.assignedEmployee?.name || "",
+      customer.pendingBalance.toString() || "0",
+      customer.createdAt.toISOString().split("T")[0]
+    ]);
+    const escapeCsvValue = /* @__PURE__ */ __name((value) => {
+      if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    }, "escapeCsvValue");
+    const csvRows = rows.map((row) => row.map(escapeCsvValue).join(","));
+    const csv = [headers.map(escapeCsvValue).join(","), ...csvRows].join("\n");
+    c.header("Content-Type", "text/csv; charset=utf-8");
+    c.header(
+      "Content-Disposition",
+      `attachment; filename="customers-${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}.csv"`
+    );
+    return c.text(csv);
+  } catch (error) {
+    return c.json(
+      { error: error.message || "Failed to export customers" },
+      500
+    );
   }
 });
 customers.get("/:id", authMiddleware, async (c) => {
@@ -19790,7 +19856,10 @@ customers.get("/:id/transactions", authMiddleware, async (c) => {
     });
     return c.json({ transactions: transactions2 });
   } catch (error) {
-    return c.json({ error: error.message || "Failed to fetch transactions" }, 500);
+    return c.json(
+      { error: error.message || "Failed to fetch transactions" },
+      500
+    );
   }
 });
 customers.post("/", authMiddleware, adminOnly, async (c) => {
@@ -19860,6 +19929,263 @@ customers.put("/:id", authMiddleware, adminOnly, async (c) => {
       return c.json({ error: "Validation error", details: error.errors }, 400);
     }
     return c.json({ error: error.message || "Failed to update customer" }, 500);
+  }
+});
+customers.post("/import", authMiddleware, adminOnly, async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get("file");
+    if (!file) {
+      return c.json({ error: "No file uploaded" }, 400);
+    }
+    let fileContent;
+    if (file instanceof File) {
+      fileContent = await file.text();
+    } else if (typeof file === "string") {
+      fileContent = file;
+    } else {
+      fileContent = await new Response(file).text();
+    }
+    const lines = fileContent.split("\n").filter((line) => line.trim());
+    if (lines.length < 2) {
+      return c.json(
+        { error: "CSV file must have at least a header and one data row" },
+        400
+      );
+    }
+    const parseCsvLine = /* @__PURE__ */ __name((line) => {
+      const result = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const nextChar = line[i + 1];
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === "," && !inQuotes) {
+          result.push(current.trim());
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    }, "parseCsvLine");
+    const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
+    const expectedHeaders = [
+      "name",
+      "mobile",
+      "email",
+      "address",
+      "whatsapp mobile",
+      "box number",
+      "id number",
+      "package name",
+      "employee name",
+      "pending balance",
+      "created at"
+    ];
+    const headerMap = {};
+    expectedHeaders.forEach((expected) => {
+      const index = headers.findIndex(
+        (h) => h.toLowerCase().trim() === expected.toLowerCase()
+      );
+      if (index !== -1) {
+        headerMap[expected] = index;
+      }
+    });
+    const requiredHeaders = [
+      "name",
+      "mobile",
+      "whatsapp mobile",
+      "box number",
+      "package name"
+    ];
+    const missingHeaders = requiredHeaders.filter(
+      (h) => headerMap[h] === void 0
+    );
+    if (missingHeaders.length > 0) {
+      return c.json(
+        {
+          error: `Missing required headers: ${missingHeaders.join(", ")}`
+        },
+        400
+      );
+    }
+    const prisma = getPrisma(c.env);
+    const [packages2, employees] = await Promise.all([
+      prisma.package.findMany(),
+      prisma.user.findMany({
+        where: { role: "EMPLOYEE" }
+      })
+    ]);
+    const packageMap = /* @__PURE__ */ new Map();
+    packages2.forEach((pkg) => {
+      packageMap.set(pkg.name, pkg.id);
+    });
+    const employeeMap = /* @__PURE__ */ new Map();
+    employees.forEach((emp) => {
+      employeeMap.set(emp.name, emp.id);
+    });
+    const errors = [];
+    const validRows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const row = parseCsvLine(lines[i]);
+      const rowNumber = i + 1;
+      try {
+        const name2 = row[headerMap["name"]]?.trim() || "";
+        const mobile = row[headerMap["mobile"]]?.trim() || "";
+        const email = row[headerMap["email"]]?.trim() || "";
+        const address = row[headerMap["address"]]?.trim() || "";
+        const whatsappMobile = row[headerMap["whatsapp mobile"]]?.trim() || "";
+        const boxNumber = row[headerMap["box number"]]?.trim() || "";
+        const idNumber = row[headerMap["id number"]]?.trim() || "";
+        const packageName = row[headerMap["package name"]]?.trim() || "";
+        const employeeName = row[headerMap["employee name"]]?.trim() || "";
+        const pendingBalance = row[headerMap["pending balance"]]?.trim() || "0";
+        if (!name2) {
+          errors.push({ row: rowNumber, error: "Name is required" });
+          continue;
+        }
+        if (!mobile || mobile.length !== 10) {
+          errors.push({
+            row: rowNumber,
+            error: "Mobile must be exactly 10 digits"
+          });
+          continue;
+        }
+        if (!whatsappMobile || whatsappMobile.length !== 10) {
+          errors.push({
+            row: rowNumber,
+            error: "WhatsApp Mobile must be exactly 10 digits"
+          });
+          continue;
+        }
+        if (!boxNumber) {
+          errors.push({ row: rowNumber, error: "Box Number is required" });
+          continue;
+        }
+        if (!packageName) {
+          errors.push({ row: rowNumber, error: "Package Name is required" });
+          continue;
+        }
+        const packageId = packageMap.get(packageName);
+        if (!packageId) {
+          errors.push({
+            row: rowNumber,
+            error: `Package "${packageName}" not found (case-sensitive match required)`
+          });
+          continue;
+        }
+        let assignedEmployeeId = void 0;
+        if (employeeName) {
+          const employeeId = employeeMap.get(employeeName);
+          if (!employeeId) {
+            errors.push({
+              row: rowNumber,
+              error: `Employee "${employeeName}" not found (case-sensitive match required)`
+            });
+            continue;
+          }
+          assignedEmployeeId = employeeId;
+        }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          errors.push({ row: rowNumber, error: "Invalid email format" });
+          continue;
+        }
+        const existing = await prisma.customer.findUnique({
+          where: { boxNumber }
+        });
+        if (existing) {
+          errors.push({
+            row: rowNumber,
+            error: `Box Number "${boxNumber}" already exists`
+          });
+          continue;
+        }
+        validRows.push({
+          name: name2,
+          mobile,
+          email: email || null,
+          address: address || null,
+          whatsappMobile,
+          boxNumber,
+          idNumber: idNumber || null,
+          packageId,
+          assignedEmployeeId,
+          pendingBalance: parseFloat(pendingBalance) || 0
+        });
+      } catch (error) {
+        errors.push({
+          row: rowNumber,
+          error: error.message || "Invalid row data"
+        });
+      }
+    }
+    if (errors.length > 0) {
+      return c.json(
+        {
+          error: "Import validation failed",
+          errors,
+          validRowsCount: validRows.length
+        },
+        400
+      );
+    }
+    const importedCustomers = [];
+    for (const rowData of validRows) {
+      try {
+        const customer = await prisma.customer.create({
+          data: rowData,
+          include: {
+            package: true,
+            assignedEmployee: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        });
+        importedCustomers.push(customer);
+      } catch (error) {
+        errors.push({
+          row: validRows.indexOf(rowData) + 2,
+          // Approximate row number
+          error: error.message || "Failed to create customer"
+        });
+      }
+    }
+    if (errors.length > 0) {
+      return c.json(
+        {
+          message: "Partial import completed",
+          imported: importedCustomers.length,
+          errors
+        },
+        207
+        // Multi-Status
+      );
+    }
+    return c.json(
+      {
+        message: "Import completed successfully",
+        imported: importedCustomers.length,
+        customers: importedCustomers
+      },
+      201
+    );
+  } catch (error) {
+    return c.json(
+      { error: error.message || "Failed to import customers" },
+      500
+    );
   }
 });
 var customers_default = customers;

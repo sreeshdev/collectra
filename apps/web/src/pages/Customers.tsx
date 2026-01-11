@@ -1,11 +1,27 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, Modal, Form, Input, Select, message, Space } from "antd";
-import { PlusOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import {
+  Button,
+  Modal,
+  Form,
+  Input,
+  Select,
+  message,
+  Space,
+  Upload,
+} from "antd";
+import {
+  PlusOutlined,
+  EditOutlined,
+  EyeOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import ResponsiveTable from "../components/ResponsiveTable";
 import api from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
+import type { UploadFile } from "antd";
 
 interface Customer {
   id: string;
@@ -100,6 +116,85 @@ export default function Customers() {
     setModalVisible(true);
   };
 
+  const handleExport = async () => {
+    try {
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:8787"
+        }/api/customers/export`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Export failed");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `customers-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      message.success("Customers exported successfully");
+    } catch (error: any) {
+      message.error(error.message || "Failed to export customers");
+    }
+  };
+
+  const importMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await api.post("/api/customers/import", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data.errors && data.errors.length > 0) {
+        const errorMessages = data.errors
+          .map((e: any) => `Row ${e.row}: ${e.error}`)
+          .join("\n");
+        message.error(`Import completed with errors:\n${errorMessages}`, 10);
+      } else {
+        message.success(
+          `Successfully imported ${
+            data.imported || data.customers?.length || 0
+          } customers`
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (error: any) => {
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        const errorMessages = errors
+          .map((e: any) => `Row ${e.row}: ${e.error}`)
+          .join("\n");
+        message.error(`Import failed:\n${errorMessages}`, 10);
+      } else {
+        message.error(
+          error.response?.data?.error || "Failed to import customers"
+        );
+      }
+    },
+  });
+
+  const handleImport = (file: File) => {
+    importMutation.mutate(file);
+    return false; // Prevent default upload
+  };
+
   const filteredCustomers = customers?.filter((c: Customer) => {
     if (!searchText) return true;
     const search = searchText.toLowerCase();
@@ -168,7 +263,7 @@ export default function Customers() {
         }}
       >
         <h1>Customers</h1>
-        <Space>
+        <Space wrap>
           <Input.Search
             placeholder="Search by name, box number, or mobile"
             style={{ width: 300 }}
@@ -176,17 +271,35 @@ export default function Customers() {
             allowClear
           />
           {user?.role === "ADMIN" && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setEditingCustomer(null);
-                form.resetFields();
-                setModalVisible(true);
-              }}
-            >
-              Add Customer
-            </Button>
+            <>
+              <Button icon={<DownloadOutlined />} onClick={handleExport}>
+                Export CSV
+              </Button>
+              <Upload
+                accept=".csv"
+                beforeUpload={handleImport}
+                showUploadList={false}
+                maxCount={1}
+              >
+                <Button
+                  icon={<UploadOutlined />}
+                  loading={importMutation.isPending}
+                >
+                  Import CSV
+                </Button>
+              </Upload>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditingCustomer(null);
+                  form.resetFields();
+                  setModalVisible(true);
+                }}
+              >
+                Add Customer
+              </Button>
+            </>
           )}
         </Space>
       </div>
