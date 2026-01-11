@@ -126,12 +126,12 @@ async function handleCron(env: Env) {
           });
 
           // Send WhatsApp reminder
-          await sendWhatsAppMessage(
-            customer,
-            paymentLink.short_url || paymentLink.id,
-            customer.package.price.toString(),
-            env
-          );
+          // await sendWhatsAppMessage(
+          //   customer,
+          //   paymentLink.short_url || paymentLink.id,
+          //   customer.package.price.toString(),
+          //   env
+          // );
 
           console.log(`Processed customer ${customer.id}`);
         }
@@ -185,8 +185,8 @@ async function createRazorpayPaymentLink(customer: any, env: Env) {
         email: customer.email || undefined,
       },
       notify: {
-        sms: false,
-        email: false,
+        sms: true,
+        email: true,
       },
     }),
   });

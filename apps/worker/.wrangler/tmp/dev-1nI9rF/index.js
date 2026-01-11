@@ -32,7 +32,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// .wrangler/tmp/bundle-Dxkc8C/checked-fetch.js
+// .wrangler/tmp/bundle-56hA5F/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -50,7 +50,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-Dxkc8C/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-56hA5F/checked-fetch.js"() {
     "use strict";
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
@@ -64,14 +64,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-Dxkc8C/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-56hA5F/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-Dxkc8C/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-56hA5F/strip-cf-connecting-ip-header.js"() {
     "use strict";
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -6535,12 +6535,12 @@ var require_postgres_array = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-Dxkc8C/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-56hA5F/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-Dxkc8C/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-56hA5F/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -20358,12 +20358,6 @@ async function handleCron(env) {
               status: "pending"
             }
           });
-          await sendWhatsAppMessage(
-            customer,
-            paymentLink.short_url || paymentLink.id,
-            customer.package.price.toString(),
-            env
-          );
           console.log(`Processed customer ${customer.id}`);
         }
       } catch (error) {
@@ -20409,8 +20403,8 @@ async function createRazorpayPaymentLink2(customer, env) {
         email: customer.email || void 0
       },
       notify: {
-        sms: false,
-        email: false
+        sms: true,
+        email: true
       }
     })
   });
@@ -20420,47 +20414,6 @@ async function createRazorpayPaymentLink2(customer, env) {
   return await response.json();
 }
 __name(createRazorpayPaymentLink2, "createRazorpayPaymentLink");
-async function sendWhatsAppMessage(customer, link, amount, env) {
-  const templateParams = {
-    name: customer.name,
-    amount,
-    link,
-    month: (/* @__PURE__ */ new Date()).toLocaleString("en-IN", {
-      month: "long",
-      year: "numeric"
-    })
-  };
-  const message = `Hello ${templateParams.name},
-
-Your payment of \u20B9${templateParams.amount} for ${templateParams.month} is due.
-
-Please pay using this link: ${templateParams.link}
-
-Thank you!`;
-  const response = await fetch(
-    `https://graph.facebook.com/v18.0/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.WHATSAPP_TOKEN}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: customer.whatsappMobile,
-        type: "text",
-        text: {
-          body: message
-        }
-      })
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`WhatsApp API error: ${response.statusText}`);
-  }
-  return await response.json();
-}
-__name(sendWhatsAppMessage, "sendWhatsAppMessage");
 
 // ../../node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
 init_checked_fetch();
@@ -20509,7 +20462,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-Dxkc8C/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-56hA5F/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -20544,7 +20497,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-Dxkc8C/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-56hA5F/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
