@@ -29,7 +29,7 @@ async function createRazorpayPaymentLink(customer: any, env: any) {
         contact: customer.mobile,
         email: customer.email || undefined,
       },
-      upi_link: true,
+      // upi_link: true,
       notify: {
         sms: true,
         email: true,
