@@ -1,94 +1,209 @@
-import { useQuery } from '@tanstack/react-query'
-import { Card, Row, Col, Statistic, Spin } from 'antd'
-import { DollarOutlined, UserOutlined, ClockCircleOutlined } from '@ant-design/icons'
-import api from '../utils/api'
-import { useAuth } from '../contexts/AuthContext'
-import dayjs from 'dayjs'
+import { useQuery } from "@tanstack/react-query";
+import { Card, Row, Col, Statistic, Spin } from "antd";
+import {
+  DollarOutlined,
+  UserOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+} from "@ant-design/icons";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import api from "../utils/api";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Dashboard() {
-  const { user } = useAuth()
-  const currentMonth = dayjs().month() + 1
-  const currentYear = dayjs().year()
+  const { user } = useAuth();
 
-  const { data: transactions, isLoading: transactionsLoading } = useQuery({
-    queryKey: ['transactions', currentMonth, currentYear],
+  const { data: dashboardData, isLoading } = useQuery({
+    queryKey: ["dashboard"],
     queryFn: async () => {
-      const response = await api.get(`/api/transactions?month=${currentMonth}&year=${currentYear}`)
-      return response.data.transactions
+      const response = await api.get("/api/dashboard");
+      return response.data;
     },
-  })
+  });
 
-  const { data: customers, isLoading: customersLoading } = useQuery({
-    queryKey: ['customers'],
-    queryFn: async () => {
-      const response = await api.get('/api/customers')
-      return response.data.customers
-    },
-  })
-
-  if (transactionsLoading || customersLoading) {
-    return <Spin size="large" style={{ display: 'block', textAlign: 'center', marginTop: '50px' }} />
+  if (isLoading) {
+    return (
+      <Spin
+        size="large"
+        style={{ display: "block", textAlign: "center", marginTop: "50px" }}
+      />
+    );
   }
 
-  const totalCollection = transactions
-    ?.filter((t: any) => t.status === 'paid')
-    .reduce((sum: number, t: any) => sum + Number(t.amount), 0) || 0
+  if (user?.role === "EMPLOYEE") {
+    // Employee Dashboard
+    return (
+      <div>
+        <h1>Dashboard</h1>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title="Today's Manual Collections"
+                value={dashboardData?.todayManualCount || 0}
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: "#1890ff" }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title="Today's Online Collections"
+                value={dashboardData?.todayOnlineCount || 0}
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: "#52c41a" }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title="Pending Customers"
+                value={dashboardData?.pendingCustomersCount || 0}
+                prefix={<ClockCircleOutlined />}
+                valueStyle={{ color: "#faad14" }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title="Today's Manual Collection Amount"
+                value={dashboardData?.todayManualAmount || 0}
+                prefix={<DollarOutlined />}
+                valueStyle={{ color: "#3f8600" }}
+                suffix="₹"
+                precision={2}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </div>
+    );
+  }
 
-  const totalPending = customers?.reduce((sum: number, c: any) => sum + Number(c.pendingBalance), 0) || 0
-
-  const customerCount = user?.role === 'ADMIN' 
-    ? customers?.length || 0
-    : customers?.filter((c: any) => c.assignedEmployeeId === user?.id).length || 0
-
-  const employeeCollection = user?.role === 'EMPLOYEE'
-    ? (transactions
-        ?.filter((t: any) => t.status === 'paid' && t.user.id === user.id)
-        .reduce((sum: number, t: any) => sum + Number(t.amount), 0) || 0)
-    : 0
-
-  const employeePending = user?.role === 'EMPLOYEE'
-    ? (customers
-        ?.filter((c: any) => c.assignedEmployeeId === user.id)
-        .reduce((sum: number, c: any) => sum + Number(c.pendingBalance), 0) || 0)
-    : 0
-
+  // Admin Dashboard
   return (
     <div>
       <h1>Dashboard</h1>
-      <Row gutter={16}>
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title={user?.role === 'ADMIN' ? 'Total Collection' : 'My Collection'}
-              value={user?.role === 'ADMIN' ? totalCollection : employeeCollection}
-              prefix={<DollarOutlined />}
-              valueStyle={{ color: '#3f8600' }}
-              suffix="₹"
-            />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title={user?.role === 'ADMIN' ? 'Total Pending' : 'My Pending'}
-              value={user?.role === 'ADMIN' ? totalPending : employeePending}
-              prefix={<ClockCircleOutlined />}
-              valueStyle={{ color: '#cf1322' }}
-              suffix="₹"
-            />
-          </Card>
-        </Col>
-        <Col span={8}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
               title="Total Customers"
-              value={customerCount}
+              value={dashboardData?.totalCustomers || 0}
               prefix={<UserOutlined />}
+              valueStyle={{ color: "#1890ff" }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Today's Manual Collections"
+              value={dashboardData?.todayManualCount || 0}
+              prefix={<CheckCircleOutlined />}
+              valueStyle={{ color: "#52c41a" }}
+            />
+            <div style={{ marginTop: 8, fontSize: 14, color: "#666" }}>
+              Amount: ₹
+              {dashboardData?.todayManualAmount?.toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }) || "0.00"}
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Today's Online Collections"
+              value={dashboardData?.todayOnlineCount || 0}
+              prefix={<CheckCircleOutlined />}
+              valueStyle={{ color: "#52c41a" }}
+            />
+            <div style={{ marginTop: 8, fontSize: 14, color: "#666" }}>
+              Amount: ₹
+              {dashboardData?.todayOnlineAmount?.toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }) || "0.00"}
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Total Today's Collection"
+              value={
+                (dashboardData?.todayManualAmount || 0) +
+                (dashboardData?.todayOnlineAmount || 0)
+              }
+              prefix={<DollarOutlined />}
+              valueStyle={{ color: "#3f8600" }}
+              suffix="₹"
+              precision={2}
             />
           </Card>
         </Col>
       </Row>
-    </div>
-  )
-}
 
+      <Row gutter={[16, 16]}>
+        <Col xs={24}>
+          <Card title="Monthly Collection Comparison (Manual vs Online)">
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart
+                data={dashboardData?.monthlyData || []}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="month"
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
+                />
+                <YAxis />
+                <Tooltip
+                  formatter={(value: number) =>
+                    `₹${value.toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}`
+                  }
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="manual"
+                  stroke="#1890ff"
+                  strokeWidth={2}
+                  name="Manual Collection"
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="online"
+                  stroke="#52c41a"
+                  strokeWidth={2}
+                  name="Online Collection"
+                  dot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+      </Row>
+    </div>
+  );
+}

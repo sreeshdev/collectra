@@ -6,12 +6,12 @@
     "apps/*"
   ],
   "scripts": {
-    "dev:worker": "cd apps/worker && npm run dev",
-    "dev:web": "cd apps/web && npm run dev",
-    "build:worker": "cd apps/worker && npm run build",
-    "build:web": "cd apps/web && npm run build",
-    "deploy:worker": "cd apps/worker && npm run deploy",
-    "deploy:web": "cd apps/web && npm run deploy"
+    "dev:worker": "cd apps/worker && yarn run dev",
+    "dev:web": "cd apps/web && yarn run dev",
+    "build:worker": "cd apps/worker && yarn run build",
+    "build:web": "cd apps/web && yarn run build",
+    "deploy:worker": "cd apps/worker && yarn run deploy",
+    "deploy:web": "cd apps/web && yarn run deploy"
   },
   "devDependencies": {
     "@types/node": "^20.10.0"

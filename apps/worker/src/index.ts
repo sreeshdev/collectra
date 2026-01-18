@@ -12,6 +12,7 @@ import transactionRoutes from "./routes/transactions";
 import paymentRoutes from "./routes/payments";
 import webhookRoutes from "./routes/webhooks";
 import messagingRoutes from "./routes/messaging";
+import dashboardRoutes from "./routes/dashboard";
 import { authMiddleware } from "./middleware/auth";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -62,6 +63,7 @@ app.route("/api", customerRoutes);
 app.route("/api", transactionRoutes);
 app.route("/api", paymentRoutes);
 app.route("/api", messagingRoutes);
+app.route("/api", dashboardRoutes);
 
 // Webhook (no auth)
 app.route("/webhooks", webhookRoutes);
