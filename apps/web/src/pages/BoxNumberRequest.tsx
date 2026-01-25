@@ -235,7 +235,7 @@ export default function BoxNumberRequest() {
                 placeholder="Select a customer"
                 showSearch
                 filterOption={(input, option) =>
-                  (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                  (option?.label || "")?.toString().toLowerCase().includes(input.toLowerCase())
                 }
                 options={customers?.map((c: any) => ({
                   label: `${c.name} - Box: ${c.boxNumber}`,
