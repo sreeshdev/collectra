@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, Modal, Form, Input, message } from "antd";
-import { PlusOutlined, EditOutlined } from "@ant-design/icons";
+import { Button, Modal, Form, Input, message, Popconfirm } from "antd";
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import ResponsiveTable from "../components/ResponsiveTable";
 import api from "../utils/api";
 
@@ -16,6 +17,7 @@ interface Employee {
 }
 
 export default function Employees() {
+  const navigate = useNavigate();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [form] = Form.useForm();
@@ -63,6 +65,20 @@ export default function Employees() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/api/users/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      message.success("Employee deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.error || "Failed to delete employee");
+    },
+  });
+
   const handleSubmit = (values: any) => {
     if (editingEmployee) {
       updateMutation.mutate({ id: editingEmployee.id, ...values });
@@ -102,9 +118,35 @@ export default function Employees() {
       title: "Actions",
       key: "actions",
       render: (_: any, record: Employee) => (
-        <Button icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-          Edit
-        </Button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          {record.role === "EMPLOYEE" && (
+            <Button
+              icon={<EyeOutlined />}
+              onClick={() => navigate(`/employees/${record.id}/view`)}
+            >
+              View
+            </Button>
+          )}
+          <Button icon={<EditOutlined />} onClick={() => handleEdit(record)}>
+            Edit
+          </Button>
+          <Popconfirm
+            title="Delete Employee"
+            description="Are you sure you want to delete this employee?"
+            onConfirm={() => deleteMutation.mutate(record.id)}
+            okText="Yes"
+            cancelText="No"
+            okButtonProps={{ danger: true }}
+          >
+            <Button
+              icon={<DeleteOutlined />}
+              danger
+              loading={deleteMutation.isPending}
+            >
+              Delete
+            </Button>
+          </Popconfirm>
+        </div>
       ),
     },
   ];

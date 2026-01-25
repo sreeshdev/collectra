@@ -9,6 +9,7 @@ import {
   message,
   Space,
   Upload,
+  Popconfirm,
 } from "antd";
 import {
   PlusOutlined,
@@ -16,6 +17,7 @@ import {
   EyeOutlined,
   DownloadOutlined,
   UploadOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import ResponsiveTable from "../components/ResponsiveTable";
@@ -98,6 +100,20 @@ export default function Customers() {
     },
     onError: (error: any) => {
       message.error(error.response?.data?.error || "Failed to update customer");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/api/customers/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      message.success("Customer deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.error || "Failed to delete customer");
     },
   });
 
@@ -243,10 +259,36 @@ export default function Customers() {
           >
             View
           </Button>
-          {user?.role === "ADMIN" && (
-            <Button icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-              Edit
+          {user?.role === "EMPLOYEE" && (
+            <Button
+              icon={<EyeOutlined />}
+              onClick={() => navigate(`/customers/${record.id}/employee-view`)}
+            >
+              View Collections
             </Button>
+          )}
+          {user?.role === "ADMIN" && (
+            <>
+              <Button icon={<EditOutlined />} onClick={() => handleEdit(record)}>
+                Edit
+              </Button>
+              <Popconfirm
+                title="Delete Customer"
+                description="Are you sure you want to delete this customer? This will also delete all their transactions."
+                onConfirm={() => deleteMutation.mutate(record.id)}
+                okText="Yes"
+                cancelText="No"
+                okButtonProps={{ danger: true }}
+              >
+                <Button
+                  icon={<DeleteOutlined />}
+                  danger
+                  loading={deleteMutation.isPending}
+                >
+                  Delete
+                </Button>
+              </Popconfirm>
+            </>
           )}
         </Space>
       ),

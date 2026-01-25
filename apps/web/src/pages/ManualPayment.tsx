@@ -79,19 +79,20 @@ export default function ManualPayment() {
               style={{ width: '100%' }}
               options={searchResults?.map((c: any) => ({
                 key: c.id,
-                value: `${c.name} - ${c.boxNumber} - ${c.mobile}`,
+                value: `${c.name} - ${c.boxNumber} - ${c.mobile}${c.address ? ` - ${c.address}` : ''}`,
                 label: (
                   <div>
                     <div>{c.name}</div>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       Box: {c.boxNumber} | Mobile: {c.mobile}
+                      {c.address && ` | Address: ${c.address}`}
                     </Text>
                   </div>
                 ),
               }))}
               onSearch={setSearchValue}
               onSelect={handleCustomerSelect}
-              placeholder="Search by name, box number, or mobile"
+              placeholder="Search by name, box number, mobile, or address"
               filterOption={false}
             />
           </Form.Item>

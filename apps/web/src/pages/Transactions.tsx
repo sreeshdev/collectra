@@ -1,38 +1,44 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Space, Tag, Select, message } from "antd";
+import { Button, Space, Tag, DatePicker, message } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import ResponsiveTable from "../components/ResponsiveTable";
 import api from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 // Helper function to format text
 const startCase = (str: string) => {
   return str.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
 }
 export default function Transactions() {
   const { user } = useAuth();
-  const [month, setMonth] = useState(dayjs().month() + 1);
-  const [year, setYear] = useState(dayjs().year());
+  const [fromDate, setFromDate] = useState<Dayjs | null>(dayjs().startOf('month'));
+  const [toDate, setToDate] = useState<Dayjs | null>(dayjs().endOf('month'));
 
   const { data: transactions, isLoading } = useQuery({
-    queryKey: ["transactions", month, year],
+    queryKey: ["transactions", fromDate?.format('YYYY-MM-DD'), toDate?.format('YYYY-MM-DD')],
     queryFn: async () => {
-      const response = await api.get(
-        `/api/transactions?month=${month}&year=${year}`
-      );
+      const params = new URLSearchParams();
+      if (fromDate) params.append('fromDate', fromDate.format('YYYY-MM-DD'));
+      if (toDate) params.append('toDate', toDate.format('YYYY-MM-DD'));
+
+      const response = await api.get(`/api/transactions?${params.toString()}`);
       return response.data.transactions;
     },
-    enabled: !!month && !!year,
+    enabled: !!fromDate && !!toDate,
   });
 
   const handleExport = async () => {
     try {
       const token = localStorage.getItem("token");
+      const params = new URLSearchParams();
+      if (fromDate) params.append('fromDate', fromDate.format('YYYY-MM-DD'));
+      if (toDate) params.append('toDate', toDate.format('YYYY-MM-DD'));
+
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:8787"
-        }/api/transactions/export?month=${month}&year=${year}`,
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:8787/"
+        }api/transactions/export?${params.toString()}`,
         {
           method: "GET",
           headers: {
@@ -49,7 +55,10 @@ export default function Transactions() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `transactions-${month}-${year}.csv`);
+      const filename = fromDate && toDate
+        ? `transactions-${fromDate.format('DD-MM-YYYY')}-to-${toDate.format('DD-MM-YYYY')}.csv`
+        : 'transactions.csv';
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -132,34 +141,20 @@ export default function Transactions() {
       </div>
 
       <Space style={{ marginBottom: 16 }}>
-        <Select
+        <DatePicker
+          placeholder="From Date"
+          value={fromDate}
+          onChange={setFromDate}
           style={{ width: 150 }}
-          value={month}
-          onChange={setMonth}
-          placeholder="Month"
-        >
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-            <Select.Option key={m} value={m}>
-              {dayjs()
-                .month(m - 1)
-                .format("MMMM")}
-            </Select.Option>
-          ))}
-        </Select>
-        <Select
+          format="DD/MM/YYYY"
+        />
+        <DatePicker
+          placeholder="To Date"
+          value={toDate}
+          onChange={setToDate}
           style={{ width: 150 }}
-          value={year}
-          onChange={setYear}
-          placeholder="Year"
-        >
-          {Array.from({ length: 5 }, (_, i) => dayjs().year() - 2 + i).map(
-            (y) => (
-              <Select.Option key={y} value={y}>
-                {y}
-              </Select.Option>
-            )
-          )}
-        </Select>
+          format="DD/MM/YYYY"
+        />
       </Space>
 
       <ResponsiveTable

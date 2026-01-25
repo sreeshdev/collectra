@@ -3,12 +3,15 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Employees from './pages/Employees'
+import EmployeeView from './pages/EmployeeView'
 import Packages from './pages/Packages'
 import Customers from './pages/Customers'
 import CustomerDetails from './pages/CustomerDetails'
+import EmployeeCustomerView from './pages/EmployeeCustomerView'
 import InitiatePayment from './pages/InitiatePayment'
 import ManualPayment from './pages/ManualPayment'
 import Transactions from './pages/Transactions'
+import BoxNumberRequest from './pages/BoxNumberRequest'
 import Settings from './pages/Settings'
 import Layout from './components/Layout'
 
@@ -57,9 +60,18 @@ function AppRoutes() {
             </AdminRoute>
           }
         />
+        <Route
+          path="employees/:id/view"
+          element={
+            <AdminRoute>
+              <EmployeeView />
+            </AdminRoute>
+          }
+        />
         <Route path="packages" element={<Packages />} />
         <Route path="customers" element={<Customers />} />
         <Route path="customers/:id" element={<CustomerDetails />} />
+        <Route path="customers/:id/employee-view" element={<EmployeeCustomerView />} />
         <Route
           path="initiate-payment"
           element={
@@ -70,6 +82,7 @@ function AppRoutes() {
         />
         <Route path="manual-payment" element={<ManualPayment />} />
         <Route path="transactions" element={<Transactions />} />
+        <Route path="box-number-requests" element={<BoxNumberRequest />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>

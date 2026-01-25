@@ -10,7 +10,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Dish Hobby Cable Vision',
+        name: 'Dish Hobby Cable Visons',
         short_name: 'Dish Hobby',
         description: 'Payment Collection System for Cable TV Business',
         theme_color: '#1890ff',

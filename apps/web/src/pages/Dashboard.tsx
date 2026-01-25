@@ -63,6 +63,13 @@ export default function Dashboard() {
                 prefix={<CheckCircleOutlined />}
                 valueStyle={{ color: "#52c41a" }}
               />
+              <div style={{ marginTop: 8, fontSize: 14, color: "#666" }}>
+                Amount: ₹
+                {dashboardData?.todayOnlineAmount?.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }) || "0.00"}
+              </div>
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={6}>
@@ -151,6 +158,31 @@ export default function Dashboard() {
               }
               prefix={<DollarOutlined />}
               valueStyle={{ color: "#3f8600" }}
+              suffix="₹"
+              precision={2}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Monthly Collection Count"
+              value={dashboardData?.monthlyCollectionCount || 0}
+              prefix={<CheckCircleOutlined />}
+              valueStyle={{ color: "#722ed1" }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Monthly Collection Amount"
+              value={dashboardData?.monthlyCollectionAmount || 0}
+              prefix={<DollarOutlined />}
+              valueStyle={{ color: "#faad14" }}
               suffix="₹"
               precision={2}
             />

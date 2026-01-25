@@ -23,13 +23,13 @@ async function createRazorpayPaymentLink(customer: any, env: any) {
     body: JSON.stringify({
       amount,
       currency: "INR",
-      description: `Payment for ${customer.package.name} - ${customer.name}`,
+      description: `Payment for ${customer.boxNumber} - ${customer.package.name} - ${customer.name}`,
       customer: {
         name: customer.name,
         contact: customer.mobile,
         email: customer.email || undefined,
       },
-      // upi_link: true,
+      upi_link: true,
       notify: {
         sms: true,
         email: true,

@@ -33,29 +33,29 @@ async function main() {
   console.log('Created admin user:', admin)
 
   // Create sample packages
-  const package1 = await prisma.package.upsert({
-    where: { id: 'sample-package-1' },
-    update: {},
-    create: {
-      id: 'sample-package-1',
-      name: 'Basic Package',
-      price: 500,
-      recurringType: 'MONTHLY',
-    },
-  })
+  // const package1 = await prisma.package.upsert({
+  //   where: { id: 'sample-package-1' },
+  //   update: {},
+  //   create: {
+  //     id: 'sample-package-1',
+  //     name: 'Basic Package',
+  //     price: 500,
+  //     recurringType: 'MONTHLY',
+  //   },
+  // })
 
-  const package2 = await prisma.package.upsert({
-    where: { id: 'sample-package-2' },
-    update: {},
-    create: {
-      id: 'sample-package-2',
-      name: 'Premium Package',
-      price: 1000,
-      recurringType: 'BIMONTHLY',
-    },
-  })
+  // const package2 = await prisma.package.upsert({
+  //   where: { id: 'sample-package-2' },
+  //   update: {},
+  //   create: {
+  //     id: 'sample-package-2',
+  //     name: 'Premium Package',
+  //     price: 1000,
+  //     recurringType: 'BIMONTHLY',
+  //   },
+  // })
 
-  console.log('Created packages:', package1, package2)
+  // console.log('Created packages:', package1, package2)
 
   console.log('Seeding completed!')
 }

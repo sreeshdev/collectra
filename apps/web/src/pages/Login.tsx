@@ -38,7 +38,7 @@ export default function Login() {
         style={{ display: "block" }}
       />
       <Card
-        title="Dish Hobby Cable Vision"
+        title="Dish Hobby Cable Visons"
         style={{
           width: 400,
           textAlign: "center",

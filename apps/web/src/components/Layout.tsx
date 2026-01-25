@@ -11,6 +11,7 @@ import {
   SettingOutlined,
   LogoutOutlined,
   TeamOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../contexts/AuthContext";
 import type { MenuProps } from "antd";
@@ -74,6 +75,11 @@ export default function Layout() {
       key: "/transactions",
       icon: <TransactionOutlined />,
       label: "Transactions",
+    },
+    {
+      key: "/box-number-requests",
+      icon: <EditOutlined />,
+      label: "Box Number Requests",
     },
     {
       key: "/settings",

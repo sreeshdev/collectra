@@ -34,21 +34,29 @@ enum TransactionStatus {
   failed
 }
 
+enum BoxNumberRequestStatus {
+  pending
+  approved
+  rejected
+}
+
 model User {
-  id               String    @id @default(uuid())
-  role             UserRole  @default(EMPLOYEE)
-  name             String
-  mobile           String    @unique
-  email            String
-  address          String?
-  passwordHash     String    @map("password_hash")
+  id                String   @id @default(uuid())
+  role              UserRole @default(EMPLOYEE)
+  name              String
+  mobile            String   @unique
+  email             String
+  address           String?
+  passwordHash      String   @map("password_hash")
   displayPictureUrl String?  @map("display_picture_url")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  
+  createdAt         DateTime @default(now()) @map("created_at")
+
   // Relations
-  assignedCustomers Customer[] @relation("AssignedEmployee")
+  assignedCustomers Customer[]         @relation("AssignedEmployee")
   transactions      Transaction[]
-  
+  boxNumberRequests BoxNumberRequest[] @relation("BoxNumberRequests")
+  boxNumberReviews  BoxNumberRequest[] @relation("BoxNumberReviews")
+
   @@map("users")
 }
 
@@ -58,33 +66,34 @@ model Package {
   price         Decimal       @db.Decimal(10, 2)
   recurringType RecurringType @map("recurring_type")
   createdAt     DateTime      @default(now()) @map("created_at")
-  
+
   // Relations
-  customers     Customer[]
-  
+  customers Customer[]
+
   @@map("packages")
 }
 
 model Customer {
-  id                String    @id @default(uuid())
-  name              String
-  mobile            String
-  email             String?
-  address           String?
-  whatsappMobile    String    @map("whatsapp_mobile")
-  boxNumber         String    @unique @map("box_number")
-  idNumber          String?   @map("id_number")
-  packageId         String    @map("package_id")
-  assignedEmployeeId String?  @map("assigned_employee_id")
-  pendingBalance    Decimal   @default(0) @map("pending_balance") @db.Decimal(10, 2)
-  lastBillingDate   DateTime? @map("last_billing_date")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  
+  id                 String    @id @default(uuid())
+  name               String
+  mobile             String
+  email              String?
+  address            String?
+  whatsappMobile     String    @map("whatsapp_mobile")
+  boxNumber          String    @unique @map("box_number")
+  idNumber           String?   @map("id_number")
+  packageId          String    @map("package_id")
+  assignedEmployeeId String?   @map("assigned_employee_id")
+  pendingBalance     Decimal   @default(0) @map("pending_balance") @db.Decimal(10, 2)
+  lastBillingDate    DateTime? @map("last_billing_date")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
   // Relations
-  package           Package   @relation(fields: [packageId], references: [id])
-  assignedEmployee  User?     @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])
+  package           Package            @relation(fields: [packageId], references: [id])
+  assignedEmployee  User?              @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])
   transactions      Transaction[]
-  
+  boxNumberRequests BoxNumberRequest[]
+
   @@map("customers")
 }
 
@@ -99,22 +108,41 @@ model Transaction {
   status          TransactionStatus @default(pending)
   remarks         String?
   createdAt       DateTime          @default(now()) @map("created_at")
-  
+
   // Relations
-  customer        Customer          @relation(fields: [customerId], references: [id])
-  user            User              @relation(fields: [transactionBy], references: [id])
-  
+  customer Customer @relation(fields: [customerId], references: [id])
+  user     User     @relation(fields: [transactionBy], references: [id])
+
   @@map("transactions")
 }
 
 model PaymentLink {
-  id            String    @id @default(uuid())
-  customerId    String    @map("customer_id")
+  id             String   @id @default(uuid())
+  customerId     String   @map("customer_id")
   razorpayLinkId String   @map("razorpay_link_id")
-  shortUrl      String?   @map("short_url")
-  status        String    @default("pending")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  
+  shortUrl       String?  @map("short_url")
+  status         String   @default("pending")
+  createdAt      DateTime @default(now()) @map("created_at")
+
   @@map("payment_links")
 }
 
+model BoxNumberRequest {
+  id           String                 @id @default(uuid())
+  customerId   String                 @map("customer_id")
+  requestedBy  String                 @map("requested_by")
+  oldBoxNumber String                 @map("old_box_number")
+  newBoxNumber String                 @map("new_box_number")
+  remarks      String?
+  status       BoxNumberRequestStatus @default(pending)
+  reviewedBy   String?                @map("reviewed_by")
+  reviewedAt   DateTime?              @map("reviewed_at")
+  createdAt    DateTime               @default(now()) @map("created_at")
+
+  // Relations
+  customer  Customer @relation(fields: [customerId], references: [id])
+  requester User     @relation("BoxNumberRequests", fields: [requestedBy], references: [id])
+  reviewer  User?    @relation("BoxNumberReviews", fields: [reviewedBy], references: [id])
+
+  @@map("box_number_requests")
+}

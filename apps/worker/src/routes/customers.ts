@@ -61,6 +61,7 @@ customers.get("/search", authMiddleware, async (c) => {
         { name: { contains: query, mode: "insensitive" } },
         { boxNumber: { contains: query, mode: "insensitive" } },
         { mobile: { contains: query } },
+        { address: { contains: query, mode: "insensitive" } },
       ],
     };
 
@@ -633,6 +634,154 @@ customers.post("/import", authMiddleware, adminOnly, async (c) => {
       { error: error.message || "Failed to import customers" },
       500
     );
+  }
+});
+
+// Delete customer (Admin only)
+customers.delete("/:id", authMiddleware, adminOnly, async (c) => {
+  try {
+    const id = c.req.param("id");
+    const prisma = getPrisma(c.env);
+
+    // Check if customer exists
+    const customer = await prisma.customer.findUnique({
+      where: { id },
+    });
+
+    if (!customer) {
+      return c.json({ error: "Customer not found" }, 404);
+    }
+
+    // Delete all transactions for this customer first
+    await prisma.transaction.deleteMany({
+      where: { customerId: id },
+    });
+
+    // Delete customer
+    await prisma.customer.delete({
+      where: { id },
+    });
+
+    return c.json({ message: "Customer deleted successfully" });
+  } catch (error: any) {
+    return c.json({ error: error.message || "Failed to delete customer" }, 500);
+  }
+});
+
+// Get customer collection stats for employee view
+customers.get("/:id/employee-view", authMiddleware, async (c) => {
+  try {
+    const user = c.get("user");
+    const id = c.req.param("id");
+    const prisma = getPrisma(c.env);
+
+    // Check if customer exists and employee has access
+    const customer = await prisma.customer.findUnique({
+      where: { id },
+      include: {
+        package: true,
+        assignedEmployee: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true,
+          },
+        },
+      },
+    });
+
+    if (!customer) {
+      return c.json({ error: "Customer not found" }, 404);
+    }
+
+    // Employee can only see assigned customers
+    if (user.role === "EMPLOYEE" && customer.assignedEmployeeId !== user.id) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+    // Current month
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
+
+    // Today's collections for this customer
+    const todayCollections = await prisma.transaction.findMany({
+      where: {
+        customerId: id,
+        status: "paid",
+        transactionDate: {
+          gte: startOfToday,
+          lte: endOfToday,
+        },
+      },
+    });
+
+    const todayCollectionCount = todayCollections.length;
+    const todayCollectionAmount = todayCollections.reduce((sum, t) => sum + Number(t.amount), 0);
+
+    // Monthly collections for this customer
+    const monthlyCollections = await prisma.transaction.findMany({
+      where: {
+        customerId: id,
+        status: "paid",
+        transactionDate: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+      },
+    });
+
+    const monthlyCollectionCount = monthlyCollections.length;
+    const monthlyCollectionAmount = monthlyCollections.reduce((sum, t) => sum + Number(t.amount), 0);
+
+    return c.json({
+      customer,
+      collectionStats: {
+        todayCollectionCount,
+        todayCollectionAmount,
+        monthlyCollectionCount,
+        monthlyCollectionAmount,
+      },
+    });
+  } catch (error: any) {
+    return c.json(
+      { error: error.message || "Failed to fetch customer collection stats" },
+      500
+    );
+  }
+});
+
+// Delete customer (Admin only)
+customers.delete("/:id", authMiddleware, adminOnly, async (c) => {
+  try {
+    const id = c.req.param("id");
+    const prisma = getPrisma(c.env);
+
+    // Check if customer exists
+    const customer = await prisma.customer.findUnique({
+      where: { id },
+    });
+
+    if (!customer) {
+      return c.json({ error: "Customer not found" }, 404);
+    }
+
+    // Delete all transactions for this customer first
+    await prisma.transaction.deleteMany({
+      where: { customerId: id },
+    });
+
+    // Delete customer
+    await prisma.customer.delete({
+      where: { id },
+    });
+
+    return c.json({ message: "Customer deleted successfully" });
+  } catch (error: any) {
+    return c.json({ error: error.message || "Failed to delete customer" }, 500);
   }
 });
 

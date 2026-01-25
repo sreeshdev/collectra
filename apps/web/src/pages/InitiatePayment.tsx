@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button, Modal, message, Tag } from 'antd'
+import { Button, Modal, message, Tag, Input, Space } from 'antd'
 import { DollarOutlined } from '@ant-design/icons'
 import ResponsiveTable from '../components/ResponsiveTable'
 import api from '../utils/api'
@@ -8,6 +8,7 @@ import api from '../utils/api'
 interface Customer {
   id: string
   name: string
+  mobile?: string
   boxNumber: string
   package: { name: string; price: number }
   pendingBalance: number
@@ -16,6 +17,7 @@ interface Customer {
 export default function InitiatePayment() {
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([])
   const [confirmVisible, setConfirmVisible] = useState(false)
+  const [searchText, setSearchText] = useState('')
 
   const queryClient = useQueryClient()
 
@@ -64,11 +66,21 @@ export default function InitiatePayment() {
     initiateMutation.mutate(selectedCustomerIds)
   }
 
+  const filteredCustomers = customers?.filter((c: Customer) => {
+    if (!searchText) return true
+    const search = searchText.toLowerCase()
+    return (
+      c.name.toLowerCase().includes(search) ||
+      c.boxNumber.toLowerCase().includes(search) ||
+      (c.mobile && c.mobile.includes(search))
+    )
+  })
+
   const rowSelection = {
     selectedRowKeys: selectedCustomerIds,
     onSelectAll: (selected: boolean, selectedRows: Customer[]) => {
       if (selected) {
-        setSelectedCustomerIds(customers?.map((c: Customer) => c.id) || [])
+        setSelectedCustomerIds(filteredCustomers?.map((c: Customer) => c.id) || [])
       } else {
         setSelectedCustomerIds([])
       }
@@ -119,21 +131,29 @@ export default function InitiatePayment() {
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <h1>Initiate Payment</h1>
-        <Button
-          type="primary"
-          icon={<DollarOutlined />}
-          onClick={handleInitiate}
-          disabled={selectedCustomerIds.length === 0}
-          loading={initiateMutation.isPending}
-        >
-          Initiate Payment ({selectedCustomerIds.length})
-        </Button>
+        <Space wrap>
+          <Input.Search
+            placeholder="Search by name, box number, or mobile"
+            style={{ width: 300 }}
+            onSearch={setSearchText}
+            allowClear
+          />
+          <Button
+            type="primary"
+            icon={<DollarOutlined />}
+            onClick={handleInitiate}
+            disabled={selectedCustomerIds.length === 0}
+            loading={initiateMutation.isPending}
+          >
+            Initiate Payment ({selectedCustomerIds.length})
+          </Button>
+        </Space>
       </div>
 
       <ResponsiveTable
         rowSelection={rowSelection}
         columns={columns}
-        dataSource={customers}
+        dataSource={filteredCustomers}
         loading={isLoading}
         rowKey="id"
       />
@@ -149,7 +169,6 @@ export default function InitiatePayment() {
         <p>This will:</p>
         <ul>
           <li>Create Razorpay payment links</li>
-          <li>Send WhatsApp reminders</li>
           <li>Create pending transactions</li>
         </ul>
       </Modal>

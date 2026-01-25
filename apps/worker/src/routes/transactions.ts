@@ -16,18 +16,29 @@ const transactions = new Hono().basePath('/transactions');
 transactions.get('/', authMiddleware, async (c) => {
   try {
     const user = c.get('user');
+    const fromDate = c.req.query('fromDate');
+    const toDate = c.req.query('toDate');
     const month = c.req.query('month');
     const year = c.req.query('year');
-    
-    if (!month || !year) {
-      return c.json({ error: 'Month and year are required' }, 400);
-    }
-    
+
     const prisma = getPrisma(c.env);
-    
-    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-    const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
-    
+
+    let startDate: Date;
+    let endDate: Date;
+
+    // Support both new from/to date format and legacy month/year format
+    if (fromDate && toDate) {
+      startDate = new Date(fromDate);
+      endDate = new Date(toDate);
+      // Set end date to end of day
+      endDate.setHours(23, 59, 59, 999);
+    } else if (month && year) {
+      startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+    } else {
+      return c.json({ error: 'Either fromDate/toDate or month/year parameters are required' }, 400);
+    }
+
     const where: any = {
       transactionDate: {
         gte: startDate,
@@ -79,18 +90,31 @@ transactions.get('/', authMiddleware, async (c) => {
 // Export transactions as Excel (Admin only)
 transactions.get('/export', authMiddleware, adminOnly, async (c) => {
   try {
+    const fromDate = c.req.query('fromDate');
+    const toDate = c.req.query('toDate');
     const month = c.req.query('month');
     const year = c.req.query('year');
-    
-    if (!month || !year) {
-      return c.json({ error: 'Month and year are required' }, 400);
-    }
-    
+
     const prisma = getPrisma(c.env);
-    
-    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-    const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
-    
+
+    let startDate: Date;
+    let endDate: Date;
+    let filename: string;
+
+    // Support both new from/to date format and legacy month/year format
+    if (fromDate && toDate) {
+      startDate = new Date(fromDate);
+      endDate = new Date(toDate);
+      endDate.setHours(23, 59, 59, 999);
+      filename = `transactions-${fromDate}-to-${toDate}.csv`;
+    } else if (month && year) {
+      startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+      filename = `transactions-${month}-${year}.csv`;
+    } else {
+      return c.json({ error: 'Either fromDate/toDate or month/year parameters are required' }, 400);
+    }
+
     const transactions = await prisma.transaction.findMany({
       where: {
         transactionDate: {
@@ -133,8 +157,8 @@ transactions.get('/export', authMiddleware, adminOnly, async (c) => {
     
     // Set headers for file download with CORS
     c.header('Content-Type', 'text/csv; charset=utf-8');
-    c.header('Content-Disposition', `attachment; filename="transactions-${month}-${year}.csv"`);
-    
+    c.header('Content-Disposition', `attachment; filename="${filename}"`);
+
     return c.text(csv);
   } catch (error: any) {
     return c.json({ error: error.message || 'Failed to export transactions' }, 500);

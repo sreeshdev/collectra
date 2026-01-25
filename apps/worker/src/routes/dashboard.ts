@@ -76,11 +76,28 @@ dashboard.get("/", authMiddleware, async (c) => {
         },
       });
 
+      // 5. Today's online collection amount for employee
+      const todayOnlineAmount = await prisma.transaction.aggregate({
+        where: {
+          customerId: { in: customerIds },
+          transactionType: "online",
+          status: "paid",
+          transactionDate: {
+            gte: today,
+            lt: tomorrow,
+          },
+        },
+        _sum: {
+          amount: true,
+        },
+      });
+
       return c.json({
         todayManualCount: todayManualTransactions,
         todayOnlineCount: todayOnlineTransactions,
         pendingCustomersCount: pendingCustomers,
         todayManualAmount: Number(todayManualAmount._sum.amount || 0),
+        todayOnlineAmount: Number(todayOnlineAmount._sum.amount || 0),
       });
     } else {
       // Admin Dashboard
@@ -138,6 +155,7 @@ dashboard.get("/", authMiddleware, async (c) => {
               lt: monthEnd,
             },
           },
+          _count: true,
           _sum: {
             amount: true,
           },
@@ -152,6 +170,7 @@ dashboard.get("/", authMiddleware, async (c) => {
               lt: monthEnd,
             },
           },
+          _count: true,
           _sum: {
             amount: true,
           },
@@ -161,8 +180,33 @@ dashboard.get("/", authMiddleware, async (c) => {
           month: monthStart.toLocaleString("default", { month: "short", year: "numeric" }),
           manual: Number(manualStats._sum.amount || 0),
           online: Number(onlineStats._sum.amount || 0),
+          manualCount: manualStats._count,
+          onlineCount: onlineStats._count,
         });
       }
+
+      // 5. Total monthly collection (current month)
+      const currentMonthStart = new Date();
+      currentMonthStart.setDate(1);
+      currentMonthStart.setHours(0, 0, 0, 0);
+      const currentMonthEnd = new Date();
+      currentMonthEnd.setMonth(currentMonthEnd.getMonth() + 1);
+      currentMonthEnd.setDate(1);
+      currentMonthEnd.setHours(0, 0, 0, 0);
+
+      const monthlyStats = await prisma.transaction.aggregate({
+        where: {
+          status: "paid",
+          transactionDate: {
+            gte: currentMonthStart,
+            lt: currentMonthEnd,
+          },
+        },
+        _count: true,
+        _sum: {
+          amount: true,
+        },
+      });
 
       return c.json({
         totalCustomers,
@@ -170,6 +214,8 @@ dashboard.get("/", authMiddleware, async (c) => {
         todayManualAmount: Number(todayManualStats._sum.amount || 0),
         todayOnlineCount: todayOnlineStats._count,
         todayOnlineAmount: Number(todayOnlineStats._sum.amount || 0),
+        monthlyCollectionCount: monthlyStats._count,
+        monthlyCollectionAmount: Number(monthlyStats._sum.amount || 0),
         monthlyData,
       });
     }
