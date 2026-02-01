@@ -168,6 +168,42 @@ users.put("/me", authMiddleware, async (c) => {
   }
 });
 
+// Get customers assigned to an employee (Admin only)
+users.get("/:id/customers", authMiddleware, adminOnly, async (c) => {
+  try {
+    const id = c.req.param("id");
+    const prisma = getPrisma(c.env);
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true, name: true },
+    });
+
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    if (user.role !== "EMPLOYEE") {
+      return c.json({ error: "User is not an employee" }, 400);
+    }
+
+    const customers = await prisma.customer.findMany({
+      where: { assignedEmployeeId: id },
+      include: {
+        package: { select: { id: true, name: true } },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return c.json({ customers });
+  } catch (error: any) {
+    return c.json(
+      { error: error.message || "Failed to fetch employee customers" },
+      500,
+    );
+  }
+});
+
 // Get employee collection stats (Admin only)
 users.get("/:id/employee-stats", authMiddleware, adminOnly, async (c) => {
   try {
@@ -199,12 +235,30 @@ users.get("/:id/employee-stats", authMiddleware, adminOnly, async (c) => {
     }
 
     const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    const startOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+    const endOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      23,
+      59,
+      59,
+    );
 
     // Current month
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
+    const endOfMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+    );
 
     // Today's collections by this employee
     const todayCollections = await prisma.transaction.findMany({
@@ -219,7 +273,10 @@ users.get("/:id/employee-stats", authMiddleware, adminOnly, async (c) => {
     });
 
     const todayCollectionCount = todayCollections.length;
-    const todayCollectionAmount = todayCollections.reduce((sum, t) => sum + Number(t.amount), 0);
+    const todayCollectionAmount = todayCollections.reduce(
+      (sum, t) => sum + Number(t.amount),
+      0,
+    );
 
     // Monthly collections by this employee
     const monthlyCollections = await prisma.transaction.findMany({
@@ -234,7 +291,10 @@ users.get("/:id/employee-stats", authMiddleware, adminOnly, async (c) => {
     });
 
     const monthlyCollectionCount = monthlyCollections.length;
-    const monthlyCollectionAmount = monthlyCollections.reduce((sum, t) => sum + Number(t.amount), 0);
+    const monthlyCollectionAmount = monthlyCollections.reduce(
+      (sum, t) => sum + Number(t.amount),
+      0,
+    );
 
     // Monthly data for last 12 months for bar chart
     const monthlyData = [];
@@ -258,7 +318,10 @@ users.get("/:id/employee-stats", authMiddleware, adminOnly, async (c) => {
       });
 
       monthlyData.push({
-        month: monthStart.toLocaleString("default", { month: "short", year: "numeric" }),
+        month: monthStart.toLocaleString("default", {
+          month: "short",
+          year: "numeric",
+        }),
         count: monthCollections.length,
         amount: monthCollections.reduce((sum, t) => sum + Number(t.amount), 0),
       });
@@ -277,7 +340,7 @@ users.get("/:id/employee-stats", authMiddleware, adminOnly, async (c) => {
   } catch (error: any) {
     return c.json(
       { error: error.message || "Failed to fetch employee collection stats" },
-      500
+      500,
     );
   }
 });
@@ -309,10 +372,21 @@ users.delete("/:id", authMiddleware, adminOnly, async (c) => {
 
     if (assignedCustomersCount > 0) {
       return c.json(
-        { error: "Cannot delete employee with assigned customers. Please reassign customers first." },
-        400
+        {
+          error:
+            "Cannot delete employee with assigned customers. Please reassign customers first.",
+        },
+        400,
       );
     }
+
+    // Reassign any box number requests created by this user to the current admin
+    // so the requestedBy FK is satisfied and we can delete the user
+    const currentUser = c.get("user");
+    await prisma.boxNumberRequest.updateMany({
+      where: { requestedBy: id },
+      data: { requestedBy: currentUser.id },
+    });
 
     // Delete user
     await prisma.user.delete({

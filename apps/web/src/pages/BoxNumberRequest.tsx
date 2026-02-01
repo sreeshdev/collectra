@@ -1,7 +1,17 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Form, Input, Select, Button, Modal, message, Tag, Space } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import {
+  Form,
+  Input,
+  Select,
+  Button,
+  Modal,
+  message,
+  Tag,
+  Space,
+  Popover,
+} from "antd";
+import { PlusOutlined, MoreOutlined } from "@ant-design/icons";
 import ResponsiveTable from "../components/ResponsiveTable";
 import api from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
@@ -50,7 +60,11 @@ export default function BoxNumberRequest() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (values: { customerId: string; newBoxNumber: string; remarks?: string }) => {
+    mutationFn: async (values: {
+      customerId: string;
+      newBoxNumber: string;
+      remarks?: string;
+    }) => {
       const response = await api.post("/api/box-number-requests", values);
       return response.data;
     },
@@ -130,8 +144,8 @@ export default function BoxNumberRequest() {
           status === "approved"
             ? "green"
             : status === "rejected"
-            ? "red"
-            : "orange";
+              ? "red"
+              : "orange";
         return <Tag color={color}>{status.toUpperCase()}</Tag>;
       },
     },
@@ -153,35 +167,53 @@ export default function BoxNumberRequest() {
             title: "Reviewed Date",
             dataIndex: "reviewedAt",
             key: "reviewedAt",
-            render: (date: string) => (date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "N/A"),
+            render: (date: string) =>
+              date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "N/A",
           },
           {
             title: "Actions",
             key: "actions",
-            render: (_: any, record: BoxNumberRequest) => (
-              <Space>
-                {record.status === "pending" && (
-                  <>
-                    <Button
-                      type="primary"
-                      size="small"
-                      onClick={() => approveMutation.mutate(record.id)}
-                      loading={approveMutation.isPending}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      danger
-                      size="small"
-                      onClick={() => rejectMutation.mutate(record.id)}
-                      loading={rejectMutation.isPending}
-                    >
-                      Reject
-                    </Button>
-                  </>
-                )}
-              </Space>
-            ),
+            render: (_: any, record: BoxNumberRequest) => {
+              if (record.status !== "pending") {
+                return null;
+              }
+              const actionItems = (
+                <Space
+                  direction="vertical"
+                  size="small"
+                  style={{ width: "100%" }}
+                >
+                  <Button
+                    type="text"
+                    block
+                    onClick={() => approveMutation.mutate(record.id)}
+                    loading={approveMutation.isPending}
+                    style={{ textAlign: "left" }}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    type="text"
+                    block
+                    danger
+                    onClick={() => rejectMutation.mutate(record.id)}
+                    loading={rejectMutation.isPending}
+                    style={{ textAlign: "left" }}
+                  >
+                    Reject
+                  </Button>
+                </Space>
+              );
+              return (
+                <Popover
+                  content={actionItems}
+                  trigger="hover"
+                  placement="bottomRight"
+                >
+                  <Button type="text" icon={<MoreOutlined />} />
+                </Popover>
+              );
+            },
           },
         ]
       : []),
@@ -235,7 +267,10 @@ export default function BoxNumberRequest() {
                 placeholder="Select a customer"
                 showSearch
                 filterOption={(input, option) =>
-                  (option?.label || "")?.toString().toLowerCase().includes(input.toLowerCase())
+                  (option?.label || "")
+                    ?.toString()
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
                 }
                 options={customers?.map((c: any) => ({
                   label: `${c.name} - Box: ${c.boxNumber}`,

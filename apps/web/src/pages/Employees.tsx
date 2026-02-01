@@ -1,7 +1,23 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, Modal, Form, Input, message, Popconfirm } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
+import {
+  Button,
+  Modal,
+  Form,
+  Input,
+  message,
+  Popconfirm,
+  Popover,
+  Space,
+} from "antd";
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  MoreOutlined,
+  TeamOutlined,
+} from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import ResponsiveTable from "../components/ResponsiveTable";
 import api from "../utils/api";
@@ -16,10 +32,21 @@ interface Employee {
   role: string;
 }
 
+interface CustomerForEmployee {
+  id: string;
+  name: string;
+  boxNumber: string;
+  mobile: string;
+  pendingBalance: number;
+  package: { id: string; name: string };
+}
+
 export default function Employees() {
   const navigate = useNavigate();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [customersModalEmployee, setCustomersModalEmployee] =
+    useState<Employee | null>(null);
   const [form] = Form.useForm();
 
   const queryClient = useQueryClient();
@@ -31,6 +58,18 @@ export default function Employees() {
       return response.data.users;
     },
   });
+
+  const { data: employeeCustomers, isLoading: loadingEmployeeCustomers } =
+    useQuery({
+      queryKey: ["employees", customersModalEmployee?.id, "customers"],
+      queryFn: async () => {
+        const response = await api.get(
+          `/api/users/${customersModalEmployee?.id}/customers`,
+        );
+        return response.data.customers as CustomerForEmployee[];
+      },
+      enabled: !!customersModalEmployee?.id,
+    });
 
   const createMutation = useMutation({
     mutationFn: async (values: any) => {
@@ -117,37 +156,71 @@ export default function Employees() {
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, record: Employee) => (
-        <div style={{ display: "flex", gap: "8px" }}>
-          {record.role === "EMPLOYEE" && (
+      render: (_: any, record: Employee) => {
+        const actionItems = (
+          <Space direction="vertical" size="small" style={{ width: "100%" }}>
+            {record.role === "EMPLOYEE" && (
+              <>
+                <Button
+                  type="text"
+                  block
+                  icon={<EyeOutlined />}
+                  onClick={() => navigate(`/employees/${record.id}/view`)}
+                  style={{ textAlign: "left" }}
+                >
+                  View
+                </Button>
+                <Button
+                  type="text"
+                  block
+                  icon={<TeamOutlined />}
+                  onClick={() => setCustomersModalEmployee(record)}
+                  style={{ textAlign: "left" }}
+                >
+                  View customers
+                </Button>
+              </>
+            )}
             <Button
-              icon={<EyeOutlined />}
-              onClick={() => navigate(`/employees/${record.id}/view`)}
+              type="text"
+              block
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+              style={{ textAlign: "left" }}
             >
-              View
+              Edit
             </Button>
-          )}
-          <Button icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-            Edit
-          </Button>
-          <Popconfirm
-            title="Delete Employee"
-            description="Are you sure you want to delete this employee?"
-            onConfirm={() => deleteMutation.mutate(record.id)}
-            okText="Yes"
-            cancelText="No"
-            okButtonProps={{ danger: true }}
+            <Popconfirm
+              title="Delete Employee"
+              description="Are you sure you want to delete this employee?"
+              onConfirm={() => deleteMutation.mutate(record.id)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
+            >
+              <Button
+                type="text"
+                block
+                icon={<DeleteOutlined />}
+                danger
+                loading={deleteMutation.isPending}
+                style={{ textAlign: "left" }}
+              >
+                Delete
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+        return (
+          <Popover
+            content={actionItems}
+            trigger="hover"
+            placement="bottomRight"
           >
-            <Button
-              icon={<DeleteOutlined />}
-              danger
-              loading={deleteMutation.isPending}
-            >
-              Delete
-            </Button>
-          </Popconfirm>
-        </div>
-      ),
+            <Button type="text" icon={<MoreOutlined />} />
+          </Popover>
+        );
+      },
     },
   ];
 
@@ -180,6 +253,74 @@ export default function Employees() {
         loading={isLoading}
         rowKey="id"
       />
+
+      <Modal
+        title={
+          customersModalEmployee
+            ? `Customers linked to ${customersModalEmployee.name} (${employeeCustomers?.length})`
+            : undefined
+        }
+        open={!!customersModalEmployee}
+        onCancel={() => setCustomersModalEmployee(null)}
+        footer={null}
+        width={700}
+      >
+        {customersModalEmployee && (
+          <>
+            {loadingEmployeeCustomers ? (
+              <div style={{ padding: 24, textAlign: "center" }}>
+                Loading customers...
+              </div>
+            ) : !employeeCustomers?.length ? (
+              <div style={{ padding: 24, textAlign: "center", color: "#888" }}>
+                No customers linked to this employee.
+              </div>
+            ) : (
+              <ResponsiveTable
+                columns={[
+                  { title: "Name", dataIndex: "name", key: "name" },
+                  {
+                    title: "Box Number",
+                    dataIndex: "boxNumber",
+                    key: "boxNumber",
+                  },
+                  { title: "Mobile", dataIndex: "mobile", key: "mobile" },
+                  {
+                    title: "Package",
+                    dataIndex: ["package", "name"],
+                    key: "package",
+                  },
+                  {
+                    title: "Pending Balance",
+                    dataIndex: "pendingBalance",
+                    key: "pendingBalance",
+                    render: (balance: number) => `₹${balance}`,
+                  },
+                  {
+                    title: "Action",
+                    key: "action",
+                    render: (_: unknown, cust: CustomerForEmployee) => (
+                      <Button
+                        type="link"
+                        size="small"
+                        onClick={() => {
+                          setCustomersModalEmployee(null);
+                          navigate(`/customers/${cust.id}`);
+                        }}
+                      >
+                        View
+                      </Button>
+                    ),
+                  },
+                ]}
+                dataSource={employeeCustomers ?? []}
+                rowKey="id"
+                pagination={{ pageSize: 5 }}
+              />
+            )}
+          </>
+        )}
+      </Modal>
 
       <Modal
         title={editingEmployee ? "Edit Employee" : "Add Employee"}

@@ -10,6 +10,7 @@ import {
   Space,
   Upload,
   Popconfirm,
+  Popover,
 } from "antd";
 import {
   PlusOutlined,
@@ -18,6 +19,7 @@ import {
   DownloadOutlined,
   UploadOutlined,
   DeleteOutlined,
+  MoreOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import ResponsiveTable from "../components/ResponsiveTable";
@@ -143,7 +145,7 @@ export default function Customers() {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -186,7 +188,7 @@ export default function Customers() {
         message.success(
           `Successfully imported ${
             data.imported || data.customers?.length || 0
-          } customers`
+          } customers`,
         );
       }
       queryClient.invalidateQueries({ queryKey: ["customers"] });
@@ -200,7 +202,7 @@ export default function Customers() {
         message.error(`Import failed:\n${errorMessages}`, 10);
       } else {
         message.error(
-          error.response?.data?.error || "Failed to import customers"
+          error.response?.data?.error || "Failed to import customers",
         );
       }
     },
@@ -228,9 +230,19 @@ export default function Customers() {
       key: "name",
     },
     {
+      title: "ID Number",
+      dataIndex: "idNumber",
+      key: "idNumber",
+    },
+    {
       title: "Box Number",
       dataIndex: "boxNumber",
       key: "boxNumber",
+    },
+    {
+      title: "Address",
+      dataIndex: "address",
+      key: "address",
     },
     {
       title: "Mobile",
@@ -251,47 +263,75 @@ export default function Customers() {
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, record: Customer) => (
-        <Space>
-          <Button
-            icon={<EyeOutlined />}
-            onClick={() => navigate(`/customers/${record.id}`)}
-          >
-            View
-          </Button>
-          {user?.role === "EMPLOYEE" && (
+      render: (_: any, record: Customer) => {
+        const actionItems = (
+          <Space direction="vertical" size="small" style={{ width: "100%" }}>
             <Button
+              type="text"
+              block
               icon={<EyeOutlined />}
-              onClick={() => navigate(`/customers/${record.id}/employee-view`)}
+              onClick={() => navigate(`/customers/${record.id}`)}
+              style={{ textAlign: "left" }}
             >
-              View Collections
+              View
             </Button>
-          )}
-          {user?.role === "ADMIN" && (
-            <>
-              <Button icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-                Edit
-              </Button>
-              <Popconfirm
-                title="Delete Customer"
-                description="Are you sure you want to delete this customer? This will also delete all their transactions."
-                onConfirm={() => deleteMutation.mutate(record.id)}
-                okText="Yes"
-                cancelText="No"
-                okButtonProps={{ danger: true }}
+            {user?.role === "EMPLOYEE" && (
+              <Button
+                type="text"
+                block
+                icon={<EyeOutlined />}
+                onClick={() =>
+                  navigate(`/customers/${record.id}/employee-view`)
+                }
+                style={{ textAlign: "left" }}
               >
+                View Collections
+              </Button>
+            )}
+            {user?.role === "ADMIN" && (
+              <>
                 <Button
-                  icon={<DeleteOutlined />}
-                  danger
-                  loading={deleteMutation.isPending}
+                  type="text"
+                  block
+                  icon={<EditOutlined />}
+                  onClick={() => handleEdit(record)}
+                  style={{ textAlign: "left" }}
                 >
-                  Delete
+                  Edit
                 </Button>
-              </Popconfirm>
-            </>
-          )}
-        </Space>
-      ),
+                <Popconfirm
+                  title="Delete Customer"
+                  description="Are you sure you want to delete this customer? This will also delete all their transactions."
+                  onConfirm={() => deleteMutation.mutate(record.id)}
+                  okText="Yes"
+                  cancelText="No"
+                  okButtonProps={{ danger: true }}
+                >
+                  <Button
+                    type="text"
+                    block
+                    icon={<DeleteOutlined />}
+                    danger
+                    loading={deleteMutation.isPending}
+                    style={{ textAlign: "left" }}
+                  >
+                    Delete
+                  </Button>
+                </Popconfirm>
+              </>
+            )}
+          </Space>
+        );
+        return (
+          <Popover
+            content={actionItems}
+            trigger="hover"
+            placement="bottomRight"
+          >
+            <Button type="text" icon={<MoreOutlined />} />
+          </Popover>
+        );
+      },
     },
   ];
 

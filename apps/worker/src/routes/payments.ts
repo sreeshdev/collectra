@@ -17,7 +17,7 @@ async function createRazorpayPaymentLink(customer: any, env: any) {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Basic ${btoa(
-        `${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`
+        `${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`,
       )}`,
     },
     body: JSON.stringify({
@@ -49,7 +49,7 @@ async function sendWhatsAppMessage(
   customer: any,
   link: string,
   amount: string,
-  env: any
+  env: any,
 ) {
   const month = new Date().toLocaleString("en-IN", {
     month: "long",
@@ -73,7 +73,7 @@ async function sendWhatsAppMessage(
           body: message,
         },
       }),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -112,19 +112,20 @@ payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
         }
 
         // Create payment link
-        const paymentLink = await createRazorpayPaymentLink(customer, c.env);
+        // commented out for now to avoid Razorpay API calls
+        // const paymentLink = await createRazorpayPaymentLink(customer, c.env);
 
         // Create transaction
-        const transaction = await prisma.transaction.create({
-          data: {
-            customerId: customer.id,
-            transactionId: paymentLink.id,
-            transactionType: "payment_link",
-            transactionBy: user.id,
-            amount: customer.package.price,
-            status: "pending",
-          },
-        });
+        // const transaction = await prisma.transaction.create({
+        //   data: {
+        //     customerId: customer.id,
+        //     transactionId: "",
+        //     transactionType: "payment_link",
+        //     transactionBy: user.id,
+        //     amount: customer.package.price,
+        //     status: "pending",
+        //   },
+        // });
 
         // Send WhatsApp message
         // await sendWhatsAppMessage(
@@ -147,8 +148,8 @@ payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
         results.push({
           customerId,
           success: true,
-          transactionId: transaction.id,
-          paymentLink: paymentLink.short_url || paymentLink.id,
+          // transactionId: transaction.id,
+          // paymentLink: paymentLink.short_url || paymentLink.id,
         });
       } catch (error: any) {
         results.push({
@@ -166,7 +167,7 @@ payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
     }
     return c.json(
       { error: error.message || "Failed to initiate payments" },
-      500
+      500,
     );
   }
 });
