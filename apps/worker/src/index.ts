@@ -38,7 +38,7 @@ app.use("*", async (c, next) => {
   c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   c.header(
     "Access-Control-Expose-Headers",
-    "Content-Disposition, Content-Type"
+    "Content-Disposition, Content-Type",
   );
 
   if (c.req.method === "OPTIONS") {
@@ -75,14 +75,14 @@ export default {
   async fetch(
     request: Request,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<Response> {
     return app.fetch(request, env, ctx);
   },
   async scheduled(
     event: ScheduledEvent,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<void> {
     ctx.waitUntil(handleCron(env));
   },
@@ -98,7 +98,7 @@ async function handleCron(env: Env) {
     const currentDay = today.getDate();
 
     // Only process on the 5th
-    if (currentDay !== 5) {
+    if (currentDay !== 2) {
       console.log("Not the 5th, skipping cron");
       return;
     }
@@ -115,19 +115,19 @@ async function handleCron(env: Env) {
 
         if (isDue) {
           // Generate payment link
-          const paymentLink = await createRazorpayPaymentLink(customer, env);
+          // const paymentLink = await createRazorpayPaymentLink(customer, env);
 
           // Create transaction
-          await prisma.transaction.create({
-            data: {
-              customerId: customer.id,
-              transactionId: paymentLink.id,
-              transactionType: "payment_link",
-              transactionBy: "system", // System user
-              amount: customer.package.price,
-              status: "pending",
-            },
-          });
+          // await prisma.transaction.create({
+          //   data: {
+          //     customerId: customer.id,
+          //     transactionId: paymentLink.id,
+          //     transactionType: "payment_link",
+          //     transactionBy: "system", // System user
+          //     amount: customer.package.price,
+          //     status: "pending",
+          //   },
+          // });
 
           // Send WhatsApp reminder
           // await sendWhatsAppMessage(
@@ -136,6 +136,15 @@ async function handleCron(env: Env) {
           //   customer.package.price.toString(),
           //   env
           // );
+
+          await prisma.customer.update({
+            where: { id: customer.id },
+            data: {
+              pendingBalance: {
+                increment: customer.package.price,
+              },
+            },
+          });
 
           console.log(`Processed customer ${customer.id}`);
         }
@@ -176,7 +185,7 @@ async function createRazorpayPaymentLink(customer: any, env: Env) {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Basic ${btoa(
-        `${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`
+        `${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`,
       )}`,
     },
     body: JSON.stringify({
@@ -206,7 +215,7 @@ async function sendWhatsAppMessage(
   customer: any,
   link: string,
   amount: string,
-  env: Env
+  env: Env,
 ) {
   const templateParams = {
     name: customer.name,
@@ -237,7 +246,7 @@ async function sendWhatsAppMessage(
           body: message,
         },
       }),
-    }
+    },
   );
 
   if (!response.ok) {

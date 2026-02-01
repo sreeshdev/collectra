@@ -32,7 +32,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// .wrangler/tmp/bundle-wKiNGq/checked-fetch.js
+// .wrangler/tmp/bundle-GGBmxw/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -50,7 +50,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-wKiNGq/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-GGBmxw/checked-fetch.js"() {
     "use strict";
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
@@ -64,14 +64,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-wKiNGq/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-GGBmxw/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-wKiNGq/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-GGBmxw/strip-cf-connecting-ip-header.js"() {
     "use strict";
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -6553,12 +6553,12 @@ var require_postgres_array = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-wKiNGq/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-GGBmxw/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-wKiNGq/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-GGBmxw/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -21389,7 +21389,7 @@ async function handleCron(env) {
     const prisma = getPrisma(env);
     const today = /* @__PURE__ */ new Date();
     const currentDay = today.getDate();
-    if (currentDay !== 5) {
+    if (currentDay !== 2) {
       console.log("Not the 5th, skipping cron");
       return;
     }
@@ -21400,16 +21400,12 @@ async function handleCron(env) {
       try {
         const isDue = checkIfDue(customer, today);
         if (isDue) {
-          const paymentLink = await createRazorpayPaymentLink(customer, env);
-          await prisma.transaction.create({
+          await prisma.customer.update({
+            where: { id: customer.id },
             data: {
-              customerId: customer.id,
-              transactionId: paymentLink.id,
-              transactionType: "payment_link",
-              transactionBy: "system",
-              // System user
-              amount: customer.package.price,
-              status: "pending"
+              pendingBalance: {
+                increment: customer.package.price
+              }
             }
           });
           console.log(`Processed customer ${customer.id}`);
@@ -21437,37 +21433,6 @@ function checkIfDue(customer, today) {
   return false;
 }
 __name(checkIfDue, "checkIfDue");
-async function createRazorpayPaymentLink(customer, env) {
-  const amount = Number(customer.package.price) * 100;
-  const response = await fetch("https://api.razorpay.com/v1/payment_links", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Basic ${btoa(
-        `${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`
-      )}`
-    },
-    body: JSON.stringify({
-      amount,
-      currency: "INR",
-      description: `Payment for ${customer.package.name} - ${customer.name}`,
-      customer: {
-        name: customer.name,
-        contact: customer.mobile,
-        email: customer.email || void 0
-      },
-      notify: {
-        sms: true,
-        email: true
-      }
-    })
-  });
-  if (!response.ok) {
-    throw new Error(`Razorpay API error: ${response.statusText}`);
-  }
-  return await response.json();
-}
-__name(createRazorpayPaymentLink, "createRazorpayPaymentLink");
 
 // ../../node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
 init_checked_fetch();
@@ -21516,7 +21481,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-wKiNGq/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-GGBmxw/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -21551,7 +21516,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-wKiNGq/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-GGBmxw/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
