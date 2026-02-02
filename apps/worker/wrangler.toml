@@ -7,9 +7,6 @@ compatibility_flags = ["nodejs_compat"]
 [triggers]
 crons = ["0 11 2 * *"]
 
-# Allow longer CPU time for bulk operations (e.g. initiate-bulk). Default is 30s.
-[limits]
-cpu_ms = 120_000
 
 # Environment variables should be set via:
 # 1. Cloudflare Dashboard → Workers → Settings → Variables
