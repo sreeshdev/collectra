@@ -37,13 +37,11 @@ export default function InitiatePayment() {
       return response.data;
     },
     onSuccess: (data) => {
-      const results = data.results;
-      const successCount = results.filter((r: any) => r.success).length;
-      const failCount = results.filter((r: any) => !r.success).length;
-
-      message.success(`${successCount} payment links created successfully`);
-      if (failCount > 0) {
-        message.warning(`${failCount} payments failed`);
+      if (data.success && data.updated != null) {
+        message.success(
+          data.message ||
+            `Updated pending balance for ${data.updated} customer(s)`,
+        );
       }
 
       queryClient.invalidateQueries({ queryKey: ["customers"] });

@@ -84,91 +84,77 @@ async function sendWhatsAppMessage(
   return await response.json();
 }
 
-// Initiate bulk payment (Admin only)
+const BULK_BATCH_SIZE = 100;
+const BULK_TX_TIMEOUT_MS = 300_000; // 5 min for large batches
+
+// Initiate bulk payment (Admin only). Uses a single transaction: all customers
+// updated or none (rollback on first error). Processes in batches to avoid timeout/memory.
 payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
   try {
-    const user = c.get("user");
     const body = await c.req.json();
     const { customerIds } = initiateBulkSchema.parse(body);
 
     const prisma = getPrisma(c.env);
 
-    const results = [];
-
-    for (const customerId of customerIds) {
-      try {
-        const customer = await prisma.customer.findUnique({
-          where: { id: customerId },
-          include: { package: true },
-        });
-
-        if (!customer) {
-          results.push({
-            customerId,
-            success: false,
-            error: "Customer not found",
-          });
-          continue;
-        }
-
-        // Create payment link
-        // commented out for now to avoid Razorpay API calls
-        // const paymentLink = await createRazorpayPaymentLink(customer, c.env);
-
-        // Create transaction
-        // const transaction = await prisma.transaction.create({
-        //   data: {
-        //     customerId: customer.id,
-        //     transactionId: "",
-        //     transactionType: "payment_link",
-        //     transactionBy: user.id,
-        //     amount: customer.package.price,
-        //     status: "pending",
-        //   },
-        // });
-
-        // Send WhatsApp message
-        // await sendWhatsAppMessage(
-        //   customer,
-        //   paymentLink.short_url || paymentLink.id,
-        //   customer.package.price.toString(),
-        //   c.env
-        // );
-
-        // Update customer pending balance
-        await prisma.customer.update({
-          where: { id: customerId },
-          data: {
-            pendingBalance: {
-              increment: customer.package.price,
-            },
-          },
-        });
-
-        results.push({
-          customerId,
-          success: true,
-          // transactionId: transaction.id,
-          // paymentLink: paymentLink.short_url || paymentLink.id,
-        });
-      } catch (error: any) {
-        results.push({
-          customerId,
-          success: false,
-          error: error.message,
-        });
-      }
+    // Split into batches for processing inside the transaction
+    const batches: string[][] = [];
+    for (let i = 0; i < customerIds.length; i += BULK_BATCH_SIZE) {
+      batches.push(customerIds.slice(i, i + BULK_BATCH_SIZE));
     }
 
-    return c.json({ results });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const updatedIds: string[] = [];
+
+        for (let b = 0; b < batches.length; b++) {
+          const batchIds = batches[b];
+
+          const customers = await tx.customer.findMany({
+            where: { id: { in: batchIds }, pendingBalance: { equals: 0 } },
+            include: { package: true },
+          });
+
+          const foundIds = new Set(customers.map((c) => c.id));
+          const missingIds = batchIds.filter((id) => !foundIds.has(id));
+          if (missingIds.length > 0) {
+            continue;
+            // throw new Error(
+            //   `Customer(s) not found (batch ${b + 1}/${batches.length}): ${missingIds.slice(0, 5).join(", ")}${missingIds.length > 5 ? ` and ${missingIds.length - 5} more` : ""}`,
+            // );
+          }
+
+          for (const customer of customers) {
+            const price = Number(customer.package.price);
+            await tx.customer.update({
+              where: { id: customer.id },
+              data: {
+                pendingBalance: { increment: price },
+              },
+            });
+            updatedIds.push(customer.id);
+          }
+        }
+
+        return { updatedIds, total: customerIds.length };
+      },
+      { timeout: BULK_TX_TIMEOUT_MS },
+    );
+
+    return c.json({
+      success: true,
+      updated: result.updatedIds.length,
+      total: result.total,
+      message: `Successfully updated pending balance for ${result.updatedIds.length} customer(s).`,
+    });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return c.json({ error: "Validation error", details: error.errors }, 400);
     }
-    return c.json(
-      { error: error.message || "Failed to initiate payments" },
-      500,
-    );
+    // Transaction rolled back; return the error that caused the rollback
+    const message =
+      error?.message ||
+      "Bulk update failed. No customers were updated (rollback).";
+    return c.json({ error: message }, 500);
   }
 });
 

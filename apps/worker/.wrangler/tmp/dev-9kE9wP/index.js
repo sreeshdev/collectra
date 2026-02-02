@@ -32,7 +32,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// .wrangler/tmp/bundle-GGBmxw/checked-fetch.js
+// .wrangler/tmp/bundle-hXPBK9/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -50,7 +50,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-GGBmxw/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-hXPBK9/checked-fetch.js"() {
     "use strict";
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
@@ -64,14 +64,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-GGBmxw/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-hXPBK9/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-GGBmxw/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-hXPBK9/strip-cf-connecting-ip-header.js"() {
     "use strict";
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -6553,12 +6553,12 @@ var require_postgres_array = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-GGBmxw/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-hXPBK9/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-GGBmxw/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-hXPBK9/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -20695,58 +20695,58 @@ var initiateBulkSchema = external_exports.object({
   customerIds: external_exports.array(external_exports.string().uuid()).min(1)
 });
 var payments = new Hono2().basePath("/payments");
+var BULK_BATCH_SIZE = 100;
+var BULK_TX_TIMEOUT_MS = 3e5;
 payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
   try {
-    const user = c.get("user");
     const body = await c.req.json();
     const { customerIds } = initiateBulkSchema.parse(body);
     const prisma = getPrisma(c.env);
-    const results = [];
-    for (const customerId of customerIds) {
-      try {
-        const customer = await prisma.customer.findUnique({
-          where: { id: customerId },
-          include: { package: true }
-        });
-        if (!customer) {
-          results.push({
-            customerId,
-            success: false,
-            error: "Customer not found"
-          });
-          continue;
-        }
-        await prisma.customer.update({
-          where: { id: customerId },
-          data: {
-            pendingBalance: {
-              increment: customer.package.price
-            }
-          }
-        });
-        results.push({
-          customerId,
-          success: true
-          // transactionId: transaction.id,
-          // paymentLink: paymentLink.short_url || paymentLink.id,
-        });
-      } catch (error) {
-        results.push({
-          customerId,
-          success: false,
-          error: error.message
-        });
-      }
+    const batches = [];
+    for (let i = 0; i < customerIds.length; i += BULK_BATCH_SIZE) {
+      batches.push(customerIds.slice(i, i + BULK_BATCH_SIZE));
     }
-    return c.json({ results });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const updatedIds = [];
+        for (let b = 0; b < batches.length; b++) {
+          const batchIds = batches[b];
+          const customers2 = await tx.customer.findMany({
+            where: { id: { in: batchIds }, pendingBalance: { equals: 0 } },
+            include: { package: true }
+          });
+          const foundIds = new Set(customers2.map((c2) => c2.id));
+          const missingIds = batchIds.filter((id) => !foundIds.has(id));
+          if (missingIds.length > 0) {
+            continue;
+          }
+          for (const customer of customers2) {
+            const price = Number(customer.package.price);
+            await tx.customer.update({
+              where: { id: customer.id },
+              data: {
+                pendingBalance: { increment: price }
+              }
+            });
+            updatedIds.push(customer.id);
+          }
+        }
+        return { updatedIds, total: customerIds.length };
+      },
+      { timeout: BULK_TX_TIMEOUT_MS }
+    );
+    return c.json({
+      success: true,
+      updated: result.updatedIds.length,
+      total: result.total,
+      message: `Successfully updated pending balance for ${result.updatedIds.length} customer(s).`
+    });
   } catch (error) {
     if (error instanceof external_exports.ZodError) {
       return c.json({ error: "Validation error", details: error.errors }, 400);
     }
-    return c.json(
-      { error: error.message || "Failed to initiate payments" },
-      500
-    );
+    const message = error?.message || "Bulk update failed. No customers were updated (rollback).";
+    return c.json({ error: message }, 500);
   }
 });
 var payments_default = payments;
@@ -21401,7 +21401,7 @@ async function handleCron(env) {
         const isDue = checkIfDue(customer, today);
         if (isDue) {
           await prisma.customer.update({
-            where: { id: customer.id },
+            where: { id: customer.id, pendingBalance: { equals: 0 } },
             data: {
               pendingBalance: {
                 increment: customer.package.price
@@ -21481,7 +21481,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-GGBmxw/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-hXPBK9/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -21516,7 +21516,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-GGBmxw/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-hXPBK9/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

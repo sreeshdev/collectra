@@ -138,7 +138,7 @@ async function handleCron(env: Env) {
           // );
 
           await prisma.customer.update({
-            where: { id: customer.id },
+            where: { id: customer.id, pendingBalance: { equals: 0 } },
             data: {
               pendingBalance: {
                 increment: customer.package.price,
