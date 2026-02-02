@@ -29,18 +29,37 @@ export default function InitiatePayment() {
     },
   });
 
+  const BULK_BATCH_SIZE = 50; // Must match API max per request to avoid 503
+
   const initiateMutation = useMutation({
     mutationFn: async (customerIds: string[]) => {
-      const response = await api.post("/api/payments/initiate-bulk", {
-        customerIds,
-      });
-      return response.data;
+      const chunks: string[][] = [];
+      for (let i = 0; i < customerIds.length; i += BULK_BATCH_SIZE) {
+        chunks.push(customerIds.slice(i, i + BULK_BATCH_SIZE));
+      }
+      let totalUpdated = 0;
+      const total = customerIds.length;
+      for (let i = 0; i < chunks.length; i++) {
+        message.loading({
+          content: `Processing batch ${i + 1}/${chunks.length}...`,
+          key: "bulk",
+          duration: 0,
+        });
+        const response = await api.post("/api/payments/initiate-bulk", {
+          customerIds: chunks[i],
+        });
+        const data = response.data;
+        if (data.success && data.updated != null) {
+          totalUpdated += data.updated;
+        }
+      }
+      message.destroy("bulk");
+      return { success: true, updated: totalUpdated, total };
     },
     onSuccess: (data) => {
       if (data.success && data.updated != null) {
         message.success(
-          data.message ||
-            `Updated pending balance for ${data.updated} customer(s)`,
+          `Updated pending balance for ${data.updated} customer(s).`,
         );
       }
 
@@ -50,6 +69,7 @@ export default function InitiatePayment() {
       setConfirmVisible(false);
     },
     onError: (error: any) => {
+      message.destroy("bulk");
       message.error(
         error.response?.data?.error || "Failed to initiate payments",
       );

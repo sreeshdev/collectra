@@ -84,23 +84,30 @@ async function sendWhatsAppMessage(
   return await response.json();
 }
 
-const BULK_BATCH_SIZE = 100;
-const BULK_TX_TIMEOUT_MS = 300_000; // 5 min for large batches
+// Max customers per request to avoid Worker timeout/503 (Cloudflare CPU and request limits).
+const BULK_MAX_CUSTOMERS_PER_REQUEST = 50;
+const BULK_TX_TIMEOUT_MS = 60_000; // 1 min per request
 
-// Initiate bulk payment (Admin only). Uses a single transaction: all customers
-// updated or none (rollback on first error). Processes in batches to avoid timeout/memory.
+// Initiate bulk payment (Admin only). Uses a single transaction per request: all customers
+// in this request updated or none (rollback on first error). Call with ≤50 IDs per request.
 payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
   try {
     const body = await c.req.json();
     const { customerIds } = initiateBulkSchema.parse(body);
 
+    if (customerIds.length > BULK_MAX_CUSTOMERS_PER_REQUEST) {
+      return c.json(
+        {
+          error: `Maximum ${BULK_MAX_CUSTOMERS_PER_REQUEST} customers per request. Send fewer IDs or use the app (it will batch automatically).`,
+        },
+        400,
+      );
+    }
+
     const prisma = getPrisma(c.env);
 
-    // Split into batches for processing inside the transaction
-    const batches: string[][] = [];
-    for (let i = 0; i < customerIds.length; i += BULK_BATCH_SIZE) {
-      batches.push(customerIds.slice(i, i + BULK_BATCH_SIZE));
-    }
+    // Single batch for this request (we already cap at BULK_MAX_CUSTOMERS_PER_REQUEST)
+    const batches: string[][] = [customerIds];
 
     const result = await prisma.$transaction(
       async (tx) => {
