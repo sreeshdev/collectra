@@ -3,9 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2023-12-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Cron trigger - runs on 5th of every month at 5 AM UTC (10:30 AM IST)
-[[triggers]]
-cron = "0 11 2 * *"
+# Cron trigger - runs on 2nd of every month at 11:00 UTC
+[triggers]
+crons = ["0 11 2 * *"]
 
 # Environment variables should be set via:
 # 1. Cloudflare Dashboard → Workers → Settings → Variables
