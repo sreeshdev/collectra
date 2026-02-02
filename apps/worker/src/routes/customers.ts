@@ -13,6 +13,7 @@ const customerSchema = z.object({
   idNumber: z.string().nullable().optional(),
   packageId: z.string().uuid(),
   assignedEmployeeId: z.string().uuid().optional(),
+  pendingBalance: z.number().optional(),
 });
 
 const customers = new Hono().basePath("/customers");
@@ -87,7 +88,7 @@ customers.get("/search", authMiddleware, async (c) => {
   } catch (error: any) {
     return c.json(
       { error: error.message || "Failed to search customers" },
-      500
+      500,
     );
   }
 });
@@ -157,14 +158,14 @@ customers.get("/export", authMiddleware, adminOnly, async (c) => {
       "Content-Disposition",
       `attachment; filename="customers-${
         new Date().toISOString().split("T")[0]
-      }.csv"`
+      }.csv"`,
     );
 
     return c.text(csv);
   } catch (error: any) {
     return c.json(
       { error: error.message || "Failed to export customers" },
-      500
+      500,
     );
   }
 });
@@ -244,7 +245,7 @@ customers.get("/:id/transactions", authMiddleware, async (c) => {
   } catch (error: any) {
     return c.json(
       { error: error.message || "Failed to fetch transactions" },
-      500
+      500,
     );
   }
 });
@@ -358,7 +359,7 @@ customers.post("/import", authMiddleware, adminOnly, async (c) => {
     if (lines.length < 2) {
       return c.json(
         { error: "CSV file must have at least a header and one data row" },
-        400
+        400,
       );
     }
 
@@ -411,7 +412,7 @@ customers.post("/import", authMiddleware, adminOnly, async (c) => {
     const headerMap: Record<string, number> = {};
     expectedHeaders.forEach((expected) => {
       const index = headers.findIndex(
-        (h) => h.toLowerCase().trim() === expected.toLowerCase()
+        (h) => h.toLowerCase().trim() === expected.toLowerCase(),
       );
       if (index !== -1) {
         headerMap[expected] = index;
@@ -427,14 +428,14 @@ customers.post("/import", authMiddleware, adminOnly, async (c) => {
       "package name",
     ];
     const missingHeaders = requiredHeaders.filter(
-      (h) => headerMap[h] === undefined
+      (h) => headerMap[h] === undefined,
     );
     if (missingHeaders.length > 0) {
       return c.json(
         {
           error: `Missing required headers: ${missingHeaders.join(", ")}`,
         },
-        400
+        400,
       );
     }
 
@@ -579,7 +580,7 @@ customers.post("/import", authMiddleware, adminOnly, async (c) => {
           errors,
           validRowsCount: validRows.length,
         },
-        400
+        400,
       );
     }
 
@@ -617,7 +618,7 @@ customers.post("/import", authMiddleware, adminOnly, async (c) => {
           imported: importedCustomers.length,
           errors,
         },
-        207 // Multi-Status
+        207, // Multi-Status
       );
     }
 
@@ -627,12 +628,12 @@ customers.post("/import", authMiddleware, adminOnly, async (c) => {
         imported: importedCustomers.length,
         customers: importedCustomers,
       },
-      201
+      201,
     );
   } catch (error: any) {
     return c.json(
       { error: error.message || "Failed to import customers" },
-      500
+      500,
     );
   }
 });
@@ -700,12 +701,30 @@ customers.get("/:id/employee-view", authMiddleware, async (c) => {
     }
 
     const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    const startOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+    const endOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      23,
+      59,
+      59,
+    );
 
     // Current month
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
+    const endOfMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+    );
 
     // Today's collections for this customer
     const todayCollections = await prisma.transaction.findMany({
@@ -720,7 +739,10 @@ customers.get("/:id/employee-view", authMiddleware, async (c) => {
     });
 
     const todayCollectionCount = todayCollections.length;
-    const todayCollectionAmount = todayCollections.reduce((sum, t) => sum + Number(t.amount), 0);
+    const todayCollectionAmount = todayCollections.reduce(
+      (sum, t) => sum + Number(t.amount),
+      0,
+    );
 
     // Monthly collections for this customer
     const monthlyCollections = await prisma.transaction.findMany({
@@ -735,7 +757,10 @@ customers.get("/:id/employee-view", authMiddleware, async (c) => {
     });
 
     const monthlyCollectionCount = monthlyCollections.length;
-    const monthlyCollectionAmount = monthlyCollections.reduce((sum, t) => sum + Number(t.amount), 0);
+    const monthlyCollectionAmount = monthlyCollections.reduce(
+      (sum, t) => sum + Number(t.amount),
+      0,
+    );
 
     return c.json({
       customer,
@@ -749,7 +774,7 @@ customers.get("/:id/employee-view", authMiddleware, async (c) => {
   } catch (error: any) {
     return c.json(
       { error: error.message || "Failed to fetch customer collection stats" },
-      500
+      500,
     );
   }
 });

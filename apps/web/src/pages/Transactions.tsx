@@ -1,26 +1,36 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Button, Space, Tag, DatePicker, message } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button, Space, Tag, DatePicker, message, Popconfirm } from "antd";
+import { DownloadOutlined, DeleteOutlined } from "@ant-design/icons";
 import ResponsiveTable from "../components/ResponsiveTable";
 import api from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
 import dayjs, { Dayjs } from "dayjs";
 // Helper function to format text
 const startCase = (str: string) => {
-  return str.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
-}
+  return str
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
+};
 export default function Transactions() {
   const { user } = useAuth();
-  const [fromDate, setFromDate] = useState<Dayjs | null>(dayjs().startOf('month'));
-  const [toDate, setToDate] = useState<Dayjs | null>(dayjs().endOf('month'));
+  const queryClient = useQueryClient();
+  const [fromDate, setFromDate] = useState<Dayjs | null>(
+    dayjs().startOf("month"),
+  );
+  const [toDate, setToDate] = useState<Dayjs | null>(dayjs().endOf("month"));
 
   const { data: transactions, isLoading } = useQuery({
-    queryKey: ["transactions", fromDate?.format('YYYY-MM-DD'), toDate?.format('YYYY-MM-DD')],
+    queryKey: [
+      "transactions",
+      fromDate?.format("YYYY-MM-DD"),
+      toDate?.format("YYYY-MM-DD"),
+    ],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (fromDate) params.append('fromDate', fromDate.format('YYYY-MM-DD'));
-      if (toDate) params.append('toDate', toDate.format('YYYY-MM-DD'));
+      if (fromDate) params.append("fromDate", fromDate.format("YYYY-MM-DD"));
+      if (toDate) params.append("toDate", toDate.format("YYYY-MM-DD"));
 
       const response = await api.get(`/api/transactions?${params.toString()}`);
       return response.data.transactions;
@@ -28,12 +38,28 @@ export default function Transactions() {
     enabled: !!fromDate && !!toDate,
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (transactionId: string) => {
+      await api.delete(`/api/transactions/${transactionId}`);
+    },
+    onSuccess: () => {
+      message.success("Transaction deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (error: any) => {
+      message.error(
+        error.response?.data?.error || "Failed to delete transaction",
+      );
+    },
+  });
+
   const handleExport = async () => {
     try {
       const token = localStorage.getItem("token");
       const params = new URLSearchParams();
-      if (fromDate) params.append('fromDate', fromDate.format('YYYY-MM-DD'));
-      if (toDate) params.append('toDate', toDate.format('YYYY-MM-DD'));
+      if (fromDate) params.append("fromDate", fromDate.format("YYYY-MM-DD"));
+      if (toDate) params.append("toDate", toDate.format("YYYY-MM-DD"));
 
       const response = await fetch(
         `${
@@ -44,7 +70,7 @@ export default function Transactions() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -55,9 +81,10 @@ export default function Transactions() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const filename = fromDate && toDate
-        ? `transactions-${fromDate.format('DD-MM-YYYY')}-to-${toDate.format('DD-MM-YYYY')}.csv`
-        : 'transactions.csv';
+      const filename =
+        fromDate && toDate
+          ? `transactions-${fromDate.format("DD-MM-YYYY")}-to-${toDate.format("DD-MM-YYYY")}.csv`
+          : "transactions.csv";
       link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
@@ -121,6 +148,31 @@ export default function Transactions() {
       dataIndex: ["user", "name"],
       key: "user",
     },
+    ...(user?.role === "ADMIN"
+      ? [
+          {
+            title: "Actions",
+            key: "actions",
+            render: (_: any, record: any) => (
+              <Popconfirm
+                title="Delete Transaction"
+                description="Are you sure you want to delete this transaction? If it was paid, the amount will be added back to the customer's pending balance."
+                onConfirm={() => deleteMutation.mutate(record.id)}
+                okText="Yes"
+                cancelText="No"
+                okButtonProps={{ danger: true }}
+              >
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  loading={deleteMutation.isPending}
+                />
+              </Popconfirm>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (

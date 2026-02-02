@@ -11,6 +11,7 @@ import {
   Upload,
   Popconfirm,
   Popover,
+  InputNumber,
 } from "antd";
 import {
   PlusOutlined,
@@ -439,6 +440,9 @@ export default function Customers() {
             </Form.Item>
             <Form.Item name="idNumber" label="ID Number">
               <Input />
+            </Form.Item>
+            <Form.Item name="pendingBalance" label="Pending Balance">
+              <InputNumber prefix="₹" />
             </Form.Item>
             <Form.Item
               name="packageId"

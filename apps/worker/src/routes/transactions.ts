@@ -1,7 +1,7 @@
-import { Hono } from 'hono';
-import { z } from 'zod';
-import { authMiddleware, adminOnly } from '../middleware/auth';
-import { getPrisma } from '../utils/prisma';
+import { Hono } from "hono";
+import { z } from "zod";
+import { authMiddleware, adminOnly } from "../middleware/auth";
+import { getPrisma } from "../utils/prisma";
 
 const manualTransactionSchema = z.object({
   customerId: z.string().uuid(),
@@ -9,17 +9,16 @@ const manualTransactionSchema = z.object({
   remarks: z.string().optional(),
 });
 
-const transactions = new Hono().basePath('/transactions');
-
+const transactions = new Hono().basePath("/transactions");
 
 // Get all transactions with filters
-transactions.get('/', authMiddleware, async (c) => {
+transactions.get("/", authMiddleware, async (c) => {
   try {
-    const user = c.get('user');
-    const fromDate = c.req.query('fromDate');
-    const toDate = c.req.query('toDate');
-    const month = c.req.query('month');
-    const year = c.req.query('year');
+    const user = c.get("user");
+    const fromDate = c.req.query("fromDate");
+    const toDate = c.req.query("toDate");
+    const month = c.req.query("month");
+    const year = c.req.query("year");
 
     const prisma = getPrisma(c.env);
 
@@ -36,7 +35,12 @@ transactions.get('/', authMiddleware, async (c) => {
       startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
       endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
     } else {
-      return c.json({ error: 'Either fromDate/toDate or month/year parameters are required' }, 400);
+      return c.json(
+        {
+          error: "Either fromDate/toDate or month/year parameters are required",
+        },
+        400,
+      );
     }
 
     const where: any = {
@@ -45,20 +49,20 @@ transactions.get('/', authMiddleware, async (c) => {
         lte: endDate,
       },
     };
-    
+
     // Employee can only see transactions for assigned customers and their own transactions
-    if (user.role === 'EMPLOYEE') {
+    if (user.role === "EMPLOYEE") {
       const assignedCustomers = await prisma.customer.findMany({
         where: { assignedEmployeeId: user.id },
         select: { id: true },
       });
-      
+
       where.OR = [
-        { customerId: { in: assignedCustomers.map(c => c.id) } },
+        { customerId: { in: assignedCustomers.map((c) => c.id) } },
         { transactionBy: user.id },
       ];
     }
-    
+
     const transactions = await prisma.transaction.findMany({
       where,
       include: {
@@ -78,22 +82,25 @@ transactions.get('/', authMiddleware, async (c) => {
           },
         },
       },
-      orderBy: { transactionDate: 'desc' },
+      orderBy: { transactionDate: "desc" },
     });
-    
+
     return c.json({ transactions });
   } catch (error: any) {
-    return c.json({ error: error.message || 'Failed to fetch transactions' }, 500);
+    return c.json(
+      { error: error.message || "Failed to fetch transactions" },
+      500,
+    );
   }
 });
 
 // Export transactions as Excel (Admin only)
-transactions.get('/export', authMiddleware, adminOnly, async (c) => {
+transactions.get("/export", authMiddleware, adminOnly, async (c) => {
   try {
-    const fromDate = c.req.query('fromDate');
-    const toDate = c.req.query('toDate');
-    const month = c.req.query('month');
-    const year = c.req.query('year');
+    const fromDate = c.req.query("fromDate");
+    const toDate = c.req.query("toDate");
+    const month = c.req.query("month");
+    const year = c.req.query("year");
 
     const prisma = getPrisma(c.env);
 
@@ -112,7 +119,12 @@ transactions.get('/export', authMiddleware, adminOnly, async (c) => {
       endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
       filename = `transactions-${month}-${year}.csv`;
     } else {
-      return c.json({ error: 'Either fromDate/toDate or month/year parameters are required' }, 400);
+      return c.json(
+        {
+          error: "Either fromDate/toDate or month/year parameters are required",
+        },
+        400,
+      );
     }
 
     const transactions = await prisma.transaction.findMany({
@@ -137,12 +149,21 @@ transactions.get('/export', authMiddleware, adminOnly, async (c) => {
           },
         },
       },
-      orderBy: { transactionDate: 'desc' },
+      orderBy: { transactionDate: "desc" },
     });
-    
+
     // Generate CSV (simplified - in production use a proper Excel library)
-    const headers = ['Customer Name', 'Box Number', 'Transaction ID', 'Date', 'Type', 'Amount', 'Status', 'Collected By'];
-    const rows = transactions.map(t => [
+    const headers = [
+      "Customer Name",
+      "Box Number",
+      "Transaction ID",
+      "Date",
+      "Type",
+      "Amount",
+      "Status",
+      "Collected By",
+    ];
+    const rows = transactions.map((t) => [
       t.customer.name,
       t.customer.boxNumber,
       t.transactionId,
@@ -152,76 +173,124 @@ transactions.get('/export', authMiddleware, adminOnly, async (c) => {
       t.status,
       t.user.name,
     ]);
-    
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    
+
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+
     // Set headers for file download with CORS
-    c.header('Content-Type', 'text/csv; charset=utf-8');
-    c.header('Content-Disposition', `attachment; filename="${filename}"`);
+    c.header("Content-Type", "text/csv; charset=utf-8");
+    c.header("Content-Disposition", `attachment; filename="${filename}"`);
 
     return c.text(csv);
   } catch (error: any) {
-    return c.json({ error: error.message || 'Failed to export transactions' }, 500);
+    return c.json(
+      { error: error.message || "Failed to export transactions" },
+      500,
+    );
   }
 });
 
 // Create manual transaction
-transactions.post('/manual', authMiddleware, async (c) => {
+transactions.post("/manual", authMiddleware, async (c) => {
   try {
-    const user = c.get('user');
+    const user = c.get("user");
     const body = await c.req.json();
     const { customerId, amount, remarks } = manualTransactionSchema.parse(body);
-    
+
     const prisma = getPrisma(c.env);
-    
+
     // Check customer exists
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
     });
-    
+
     if (!customer) {
-      return c.json({ error: 'Customer not found' }, 404);
+      return c.json({ error: "Customer not found" }, 404);
     }
-    
+
     // Employee can only collect for assigned customers
-    if (user.role === 'EMPLOYEE' && customer.assignedEmployeeId !== user.id) {
-      return c.json({ error: 'Forbidden - You can only collect for assigned customers' }, 403);
+    if (user.role === "EMPLOYEE" && customer.assignedEmployeeId !== user.id) {
+      return c.json(
+        { error: "Forbidden - You can only collect for assigned customers" },
+        403,
+      );
     }
-    
+
     // Check if amount exceeds pending balance
     const pendingBalance = Number(customer.pendingBalance);
     if (amount > pendingBalance) {
-      return c.json({ error: 'Amount exceeds pending balance' }, 400);
+      return c.json({ error: "Amount exceeds pending balance" }, 400);
     }
-    
+
     // Create transaction
     const transaction = await prisma.transaction.create({
       data: {
         customerId,
         transactionId: `MANUAL-${Date.now()}`,
-        transactionType: 'manual',
+        transactionType: "manual",
         transactionBy: user.id,
         amount,
-        status: 'paid',
+        status: "paid",
         remarks,
       },
     });
-    
+
     // Update customer pending balance
     const newPendingBalance = Math.max(0, pendingBalance - amount);
     await prisma.customer.update({
       where: { id: customerId },
       data: { pendingBalance: newPendingBalance },
     });
-    
+
     return c.json({ transaction }, 201);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return c.json({ error: 'Validation error', details: error.errors }, 400);
+      return c.json({ error: "Validation error", details: error.errors }, 400);
     }
-    return c.json({ error: error.message || 'Failed to create transaction' }, 500);
+    return c.json(
+      { error: error.message || "Failed to create transaction" },
+      500,
+    );
+  }
+});
+
+// Delete transaction (Admin only). Reverses customer pending balance if transaction was paid.
+transactions.delete("/:id", authMiddleware, adminOnly, async (c) => {
+  try {
+    const id = c.req.param("id");
+    const prisma = getPrisma(c.env);
+
+    const transaction = await prisma.transaction.findUnique({
+      where: { id },
+      include: { customer: true },
+    });
+
+    if (!transaction) {
+      return c.json({ error: "Transaction not found" }, 404);
+    }
+
+    const amount = Number(transaction.amount);
+    const customerId = transaction.customerId;
+
+    // If transaction was paid, add amount back to customer's pending balance
+    if (transaction.status === "paid") {
+      const currentPending = Number(transaction.customer.pendingBalance);
+      await prisma.customer.update({
+        where: { id: customerId },
+        data: { pendingBalance: currentPending + amount },
+      });
+    }
+
+    await prisma.transaction.delete({
+      where: { id },
+    });
+
+    return c.json({ message: "Transaction deleted successfully" });
+  } catch (error: any) {
+    return c.json(
+      { error: error.message || "Failed to delete transaction" },
+      500,
+    );
   }
 });
 
 export default transactions;
-
