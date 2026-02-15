@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { prettyJSON } from "hono/pretty-json";
 import { getPrisma, type Env } from "./utils/prisma";
@@ -21,32 +22,33 @@ const app = new Hono<{ Bindings: Env }>();
 // Middleware
 app.use("*", logger());
 app.use("*", prettyJSON());
-app.use("*", async (c, next) => {
-  const origin = c.req.header("Origin") || "";
-  const allowedOrigins = [
-    c.env.APP_BASE_URL || "http://localhost:5173",
-    "http://localhost:5173",
-    "http://localhost:3000",
-  ];
-  const allowedOrigin = allowedOrigins.includes(origin)
-    ? origin
-    : allowedOrigins[0];
+app.use(
+  "*",
+  cors({
+    origin: (origin) => {
+      const allowed = new Set([
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://collectra.pages.dev",
+        // c.env?.APP_BASE_URL, // set this to your prod frontend too
+      ]);
 
-  c.header("Access-Control-Allow-Origin", allowedOrigin);
-  c.header("Access-Control-Allow-Credentials", "true");
-  c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  c.header(
-    "Access-Control-Expose-Headers",
-    "Content-Disposition, Content-Type",
-  );
+      // If request has Origin, echo it back if allowed
+      if (origin && allowed.has(origin)) return origin;
 
-  if (c.req.method === "OPTIONS") {
-    return c.text("", 204);
-  }
+      // No origin (curl / server-to-server)
+      if (!origin) return "*";
 
-  await next();
-});
+      // Block others
+      return null;
+    },
+    credentials: true,
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+
+app.options("*", (c) => c.text("", 204));
 
 // Health check
 app.get("/", (c) => {
@@ -69,6 +71,13 @@ app.route("/api", boxNumberRequestRoutes);
 
 // Webhook (no auth)
 app.route("/webhooks", webhookRoutes);
+
+app.notFound((c) => c.json({ error: "Not Found" }, 404));
+
+app.onError((err, c) => {
+  console.error(err);
+  return c.json({ error: "Internal Server Error" }, 500);
+});
 
 // Cron handler
 export default {
