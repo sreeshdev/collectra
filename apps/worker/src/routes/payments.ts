@@ -117,7 +117,11 @@ payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
           const batchIds = batches[b];
 
           const customers = await tx.customer.findMany({
-            where: { id: { in: batchIds }, pendingBalance: { equals: 0 } },
+            where: {
+              id: { in: batchIds },
+              pendingBalance: { equals: 0 },
+              status: "ACTIVE",
+            },
             include: { package: true },
           });
 

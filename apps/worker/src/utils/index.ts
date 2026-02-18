@@ -1,7 +1,8 @@
 // Escape a CSV field (quote if contains comma, newline, or double quote).
-// Prefix transaction ID with tab so Excel treats it as text and does not convert to scientific notation.
+// forceText: prefix with single quote so Excel treats as text (avoids scientific notation); Excel hides the quote in the cell.
 export const csvField = (val: unknown, forceText = false): string => {
-  const s = forceText ? "\t" + String(val) : String(val ?? "");
+  const raw = String(val ?? "");
+  const s = forceText ? "'" + raw : raw;
   if (s.includes(",") || s.includes('"') || s.includes("\n")) {
     return '"' + s.replace(/"/g, '""') + '"';
   }

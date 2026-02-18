@@ -183,7 +183,7 @@ transactions.get("/export", authMiddleware, adminOnly, async (c) => {
     const rows = transactions.map((t) => [
       csvField(t.customer.name),
       csvField(t.customer.boxNumber, true),
-      csvField(t.transactionId, true), // force text so Excel doesn't show scientific notation
+      csvField(t.transactionId), // force text so Excel doesn't show scientific notation
       csvField(t.transactionDate.toISOString()),
       csvField(t.transactionType),
       csvField(t.amount),
