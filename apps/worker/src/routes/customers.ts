@@ -3,6 +3,8 @@ import { z } from "zod";
 import { authMiddleware, adminOnly } from "../middleware/auth";
 import { getPrisma } from "../utils/prisma";
 
+const customerStatusEnum = z.enum(["ACTIVE", "INACTIVE"]);
+
 const customerSchema = z.object({
   name: z.string().min(1),
   mobile: z.string().length(10),
@@ -13,6 +15,7 @@ const customerSchema = z.object({
   idNumber: z.string().nullable().optional(),
   packageId: z.string().uuid(),
   assignedEmployeeId: z.string().uuid().optional(),
+  status: customerStatusEnum.optional(),
   pendingBalance: z.number().optional(),
 });
 
@@ -278,6 +281,7 @@ customers.post("/", authMiddleware, adminOnly, async (c) => {
         idNumber: data.idNumber,
         packageId: data.packageId,
         assignedEmployeeId: data.assignedEmployeeId,
+        status: data.status ?? "ACTIVE",
         pendingBalance: 0,
       },
       include: {
@@ -655,6 +659,16 @@ customers.delete("/:id", authMiddleware, adminOnly, async (c) => {
 
     // Delete all transactions for this customer first
     await prisma.transaction.deleteMany({
+      where: { customerId: id },
+    });
+
+    //Delete all box number requests for this customer
+    await prisma.boxNumberRequest.deleteMany({
+      where: { customerId: id },
+    });
+
+    //Delete all box number reviews for this customer
+    await prisma.customerStatusChangeRequest.deleteMany({
       where: { customerId: id },
     });
 

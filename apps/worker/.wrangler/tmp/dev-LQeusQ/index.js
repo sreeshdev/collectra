@@ -32,7 +32,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// .wrangler/tmp/bundle-yuNvX0/checked-fetch.js
+// .wrangler/tmp/bundle-AQ48ph/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -50,7 +50,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-yuNvX0/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-AQ48ph/checked-fetch.js"() {
     "use strict";
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
@@ -64,14 +64,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-yuNvX0/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-AQ48ph/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-yuNvX0/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-AQ48ph/strip-cf-connecting-ip-header.js"() {
     "use strict";
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -6054,6 +6054,7 @@ var require_wasm2 = __commonJS({
       idNumber: "idNumber",
       packageId: "packageId",
       assignedEmployeeId: "assignedEmployeeId",
+      status: "status",
       pendingBalance: "pendingBalance",
       lastBillingDate: "lastBillingDate",
       createdAt: "createdAt"
@@ -6090,6 +6091,17 @@ var require_wasm2 = __commonJS({
       reviewedAt: "reviewedAt",
       createdAt: "createdAt"
     };
+    exports.Prisma.CustomerStatusChangeRequestScalarFieldEnum = {
+      id: "id",
+      customerId: "customerId",
+      requestedBy: "requestedBy",
+      requestedStatus: "requestedStatus",
+      remarks: "remarks",
+      status: "status",
+      reviewedBy: "reviewedBy",
+      reviewedAt: "reviewedAt",
+      createdAt: "createdAt"
+    };
     exports.Prisma.SortOrder = {
       asc: "asc",
       desc: "desc"
@@ -6110,6 +6122,10 @@ var require_wasm2 = __commonJS({
       MONTHLY: "MONTHLY",
       BIMONTHLY: "BIMONTHLY"
     };
+    exports.CustomerStatus = exports.$Enums.CustomerStatus = {
+      ACTIVE: "ACTIVE",
+      INACTIVE: "INACTIVE"
+    };
     exports.TransactionType = exports.$Enums.TransactionType = {
       manual: "manual",
       payment_link: "payment_link",
@@ -6125,13 +6141,19 @@ var require_wasm2 = __commonJS({
       approved: "approved",
       rejected: "rejected"
     };
+    exports.CustomerStatusRequestStatus = exports.$Enums.CustomerStatusRequestStatus = {
+      pending: "pending",
+      approved: "approved",
+      rejected: "rejected"
+    };
     exports.Prisma.ModelName = {
       User: "User",
       Package: "Package",
       Customer: "Customer",
       Transaction: "Transaction",
       PaymentLink: "PaymentLink",
-      BoxNumberRequest: "BoxNumberRequest"
+      BoxNumberRequest: "BoxNumberRequest",
+      CustomerStatusChangeRequest: "CustomerStatusChangeRequest"
     };
     var config = {
       "generator": {
@@ -6178,12 +6200,12 @@ var require_wasm2 = __commonJS({
           }
         }
       },
-      "inlineSchema": '// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider        = "prisma-client-js"\n  previewFeatures = ["driverAdapters"]\n}\n\ndatasource db {\n  provider  = "postgresql"\n  url       = env("DATABASE_URL")\n  directUrl = env("DIRECT_URL")\n}\n\nenum UserRole {\n  ADMIN\n  EMPLOYEE\n}\n\nenum RecurringType {\n  MONTHLY\n  BIMONTHLY\n}\n\nenum TransactionType {\n  manual\n  payment_link\n  online\n}\n\nenum TransactionStatus {\n  pending\n  paid\n  failed\n}\n\nenum BoxNumberRequestStatus {\n  pending\n  approved\n  rejected\n}\n\nmodel User {\n  id                String   @id @default(uuid())\n  role              UserRole @default(EMPLOYEE)\n  name              String\n  mobile            String   @unique\n  email             String\n  address           String?\n  passwordHash      String   @map("password_hash")\n  displayPictureUrl String?  @map("display_picture_url")\n  createdAt         DateTime @default(now()) @map("created_at")\n\n  // Relations\n  assignedCustomers Customer[]         @relation("AssignedEmployee")\n  transactions      Transaction[]\n  boxNumberRequests BoxNumberRequest[] @relation("BoxNumberRequests")\n  boxNumberReviews  BoxNumberRequest[] @relation("BoxNumberReviews")\n\n  @@map("users")\n}\n\nmodel Package {\n  id            String        @id @default(uuid())\n  name          String\n  price         Decimal       @db.Decimal(10, 2)\n  recurringType RecurringType @map("recurring_type")\n  createdAt     DateTime      @default(now()) @map("created_at")\n\n  // Relations\n  customers Customer[]\n\n  @@map("packages")\n}\n\nmodel Customer {\n  id                 String    @id @default(uuid())\n  name               String\n  mobile             String\n  email              String?\n  address            String?\n  whatsappMobile     String    @map("whatsapp_mobile")\n  boxNumber          String    @unique @map("box_number")\n  idNumber           String?   @map("id_number")\n  packageId          String    @map("package_id")\n  assignedEmployeeId String?   @map("assigned_employee_id")\n  pendingBalance     Decimal   @default(0) @map("pending_balance") @db.Decimal(10, 2)\n  lastBillingDate    DateTime? @map("last_billing_date")\n  createdAt          DateTime  @default(now()) @map("created_at")\n\n  // Relations\n  package           Package            @relation(fields: [packageId], references: [id])\n  assignedEmployee  User?              @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])\n  transactions      Transaction[]\n  boxNumberRequests BoxNumberRequest[]\n\n  @@map("customers")\n}\n\nmodel Transaction {\n  id              String            @id @default(uuid())\n  customerId      String            @map("customer_id")\n  transactionId   String            @map("transaction_id")\n  transactionDate DateTime          @default(now()) @map("transaction_date")\n  transactionType TransactionType   @map("transaction_type")\n  transactionBy   String            @map("transaction_by")\n  amount          Decimal           @db.Decimal(10, 2)\n  status          TransactionStatus @default(pending)\n  remarks         String?\n  createdAt       DateTime          @default(now()) @map("created_at")\n\n  // Relations\n  customer Customer @relation(fields: [customerId], references: [id])\n  user     User     @relation(fields: [transactionBy], references: [id])\n\n  @@map("transactions")\n}\n\nmodel PaymentLink {\n  id             String   @id @default(uuid())\n  customerId     String   @map("customer_id")\n  razorpayLinkId String   @map("razorpay_link_id")\n  shortUrl       String?  @map("short_url")\n  status         String   @default("pending")\n  createdAt      DateTime @default(now()) @map("created_at")\n\n  @@map("payment_links")\n}\n\nmodel BoxNumberRequest {\n  id           String                 @id @default(uuid())\n  customerId   String                 @map("customer_id")\n  requestedBy  String                 @map("requested_by")\n  oldBoxNumber String                 @map("old_box_number")\n  newBoxNumber String                 @map("new_box_number")\n  remarks      String?\n  status       BoxNumberRequestStatus @default(pending)\n  reviewedBy   String?                @map("reviewed_by")\n  reviewedAt   DateTime?              @map("reviewed_at")\n  createdAt    DateTime               @default(now()) @map("created_at")\n\n  // Relations\n  customer  Customer @relation(fields: [customerId], references: [id])\n  requester User     @relation("BoxNumberRequests", fields: [requestedBy], references: [id])\n  reviewer  User?    @relation("BoxNumberReviews", fields: [reviewedBy], references: [id])\n\n  @@map("box_number_requests")\n}\n',
-      "inlineSchemaHash": "cb9d2f51b6eab2a5bbe6cff41740b1616d10b48796116696079966e7e7848a0c",
+      "inlineSchema": '// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider        = "prisma-client-js"\n  previewFeatures = ["driverAdapters"]\n}\n\ndatasource db {\n  provider  = "postgresql"\n  url       = env("DATABASE_URL")\n  directUrl = env("DIRECT_URL")\n}\n\nenum UserRole {\n  ADMIN\n  EMPLOYEE\n}\n\nenum RecurringType {\n  MONTHLY\n  BIMONTHLY\n}\n\nenum TransactionType {\n  manual\n  payment_link\n  online\n}\n\nenum TransactionStatus {\n  pending\n  paid\n  failed\n}\n\nenum BoxNumberRequestStatus {\n  pending\n  approved\n  rejected\n}\n\nenum CustomerStatus {\n  ACTIVE\n  INACTIVE\n}\n\nenum CustomerStatusRequestStatus {\n  pending\n  approved\n  rejected\n}\n\nmodel User {\n  id                String   @id @default(uuid())\n  role              UserRole @default(EMPLOYEE)\n  name              String\n  mobile            String   @unique\n  email             String\n  address           String?\n  passwordHash      String   @map("password_hash")\n  displayPictureUrl String?  @map("display_picture_url")\n  createdAt         DateTime @default(now()) @map("created_at")\n\n  // Relations\n  assignedCustomers    Customer[]                    @relation("AssignedEmployee")\n  transactions         Transaction[]\n  boxNumberRequests    BoxNumberRequest[]            @relation("BoxNumberRequests")\n  boxNumberReviews     BoxNumberRequest[]            @relation("BoxNumberReviews")\n  statusChangeRequests CustomerStatusChangeRequest[] @relation("StatusChangeRequests")\n  statusChangeReviews  CustomerStatusChangeRequest[] @relation("StatusChangeReviews")\n\n  @@map("users")\n}\n\nmodel Package {\n  id            String        @id @default(uuid())\n  name          String\n  price         Decimal       @db.Decimal(10, 2)\n  recurringType RecurringType @map("recurring_type")\n  createdAt     DateTime      @default(now()) @map("created_at")\n\n  // Relations\n  customers Customer[]\n\n  @@map("packages")\n}\n\nmodel Customer {\n  id                 String         @id @default(uuid())\n  name               String\n  mobile             String\n  email              String?\n  address            String?\n  whatsappMobile     String         @map("whatsapp_mobile")\n  boxNumber          String         @unique @map("box_number")\n  idNumber           String?        @map("id_number")\n  packageId          String         @map("package_id")\n  assignedEmployeeId String?        @map("assigned_employee_id")\n  status             CustomerStatus @default(ACTIVE)\n  pendingBalance     Decimal        @default(0) @map("pending_balance") @db.Decimal(10, 2)\n  lastBillingDate    DateTime?      @map("last_billing_date")\n  createdAt          DateTime       @default(now()) @map("created_at")\n\n  // Relations\n  package              Package                       @relation(fields: [packageId], references: [id])\n  assignedEmployee     User?                         @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])\n  transactions         Transaction[]\n  boxNumberRequests    BoxNumberRequest[]\n  statusChangeRequests CustomerStatusChangeRequest[]\n\n  @@map("customers")\n}\n\nmodel Transaction {\n  id              String            @id @default(uuid())\n  customerId      String            @map("customer_id")\n  transactionId   String            @map("transaction_id")\n  transactionDate DateTime          @default(now()) @map("transaction_date")\n  transactionType TransactionType   @map("transaction_type")\n  transactionBy   String            @map("transaction_by")\n  amount          Decimal           @db.Decimal(10, 2)\n  status          TransactionStatus @default(pending)\n  remarks         String?\n  createdAt       DateTime          @default(now()) @map("created_at")\n\n  // Relations\n  customer Customer @relation(fields: [customerId], references: [id])\n  user     User     @relation(fields: [transactionBy], references: [id])\n\n  @@map("transactions")\n}\n\nmodel PaymentLink {\n  id             String   @id @default(uuid())\n  customerId     String   @map("customer_id")\n  razorpayLinkId String   @map("razorpay_link_id")\n  shortUrl       String?  @map("short_url")\n  status         String   @default("pending")\n  createdAt      DateTime @default(now()) @map("created_at")\n\n  @@map("payment_links")\n}\n\nmodel BoxNumberRequest {\n  id           String                 @id @default(uuid())\n  customerId   String                 @map("customer_id")\n  requestedBy  String                 @map("requested_by")\n  oldBoxNumber String                 @map("old_box_number")\n  newBoxNumber String                 @map("new_box_number")\n  remarks      String?\n  status       BoxNumberRequestStatus @default(pending)\n  reviewedBy   String?                @map("reviewed_by")\n  reviewedAt   DateTime?              @map("reviewed_at")\n  createdAt    DateTime               @default(now()) @map("created_at")\n\n  // Relations\n  customer  Customer @relation(fields: [customerId], references: [id])\n  requester User     @relation("BoxNumberRequests", fields: [requestedBy], references: [id])\n  reviewer  User?    @relation("BoxNumberReviews", fields: [reviewedBy], references: [id])\n\n  @@map("box_number_requests")\n}\n\nmodel CustomerStatusChangeRequest {\n  id              String                      @id @default(uuid())\n  customerId      String                      @map("customer_id")\n  requestedBy     String                      @map("requested_by")\n  requestedStatus CustomerStatus              @map("requested_status")\n  remarks         String?\n  status          CustomerStatusRequestStatus @default(pending)\n  reviewedBy      String?                     @map("reviewed_by")\n  reviewedAt      DateTime?                   @map("reviewed_at")\n  createdAt       DateTime                    @default(now()) @map("created_at")\n\n  // Relations\n  customer  Customer @relation(fields: [customerId], references: [id])\n  requester User     @relation("StatusChangeRequests", fields: [requestedBy], references: [id])\n  reviewer  User?    @relation("StatusChangeReviews", fields: [reviewedBy], references: [id])\n\n  @@map("customer_status_change_requests")\n}\n',
+      "inlineSchemaHash": "7414dc73f18a3d703731d1dcda8e0a36c1ea898d6cf11048e3922b0fba2496f1",
       "copyEngine": true
     };
     config.dirname = "/";
-    config.runtimeDataModel = JSON.parse('{"models":{"User":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"role","kind":"enum","type":"UserRole"},{"name":"name","kind":"scalar","type":"String"},{"name":"mobile","kind":"scalar","type":"String"},{"name":"email","kind":"scalar","type":"String"},{"name":"address","kind":"scalar","type":"String"},{"name":"passwordHash","kind":"scalar","type":"String","dbName":"password_hash"},{"name":"displayPictureUrl","kind":"scalar","type":"String","dbName":"display_picture_url"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"},{"name":"assignedCustomers","kind":"object","type":"Customer","relationName":"AssignedEmployee"},{"name":"transactions","kind":"object","type":"Transaction","relationName":"TransactionToUser"},{"name":"boxNumberRequests","kind":"object","type":"BoxNumberRequest","relationName":"BoxNumberRequests"},{"name":"boxNumberReviews","kind":"object","type":"BoxNumberRequest","relationName":"BoxNumberReviews"}],"dbName":"users"},"Package":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"price","kind":"scalar","type":"Decimal"},{"name":"recurringType","kind":"enum","type":"RecurringType","dbName":"recurring_type"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"},{"name":"customers","kind":"object","type":"Customer","relationName":"CustomerToPackage"}],"dbName":"packages"},"Customer":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"mobile","kind":"scalar","type":"String"},{"name":"email","kind":"scalar","type":"String"},{"name":"address","kind":"scalar","type":"String"},{"name":"whatsappMobile","kind":"scalar","type":"String","dbName":"whatsapp_mobile"},{"name":"boxNumber","kind":"scalar","type":"String","dbName":"box_number"},{"name":"idNumber","kind":"scalar","type":"String","dbName":"id_number"},{"name":"packageId","kind":"scalar","type":"String","dbName":"package_id"},{"name":"assignedEmployeeId","kind":"scalar","type":"String","dbName":"assigned_employee_id"},{"name":"pendingBalance","kind":"scalar","type":"Decimal","dbName":"pending_balance"},{"name":"lastBillingDate","kind":"scalar","type":"DateTime","dbName":"last_billing_date"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"},{"name":"package","kind":"object","type":"Package","relationName":"CustomerToPackage"},{"name":"assignedEmployee","kind":"object","type":"User","relationName":"AssignedEmployee"},{"name":"transactions","kind":"object","type":"Transaction","relationName":"CustomerToTransaction"},{"name":"boxNumberRequests","kind":"object","type":"BoxNumberRequest","relationName":"BoxNumberRequestToCustomer"}],"dbName":"customers"},"Transaction":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"customerId","kind":"scalar","type":"String","dbName":"customer_id"},{"name":"transactionId","kind":"scalar","type":"String","dbName":"transaction_id"},{"name":"transactionDate","kind":"scalar","type":"DateTime","dbName":"transaction_date"},{"name":"transactionType","kind":"enum","type":"TransactionType","dbName":"transaction_type"},{"name":"transactionBy","kind":"scalar","type":"String","dbName":"transaction_by"},{"name":"amount","kind":"scalar","type":"Decimal"},{"name":"status","kind":"enum","type":"TransactionStatus"},{"name":"remarks","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"},{"name":"customer","kind":"object","type":"Customer","relationName":"CustomerToTransaction"},{"name":"user","kind":"object","type":"User","relationName":"TransactionToUser"}],"dbName":"transactions"},"PaymentLink":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"customerId","kind":"scalar","type":"String","dbName":"customer_id"},{"name":"razorpayLinkId","kind":"scalar","type":"String","dbName":"razorpay_link_id"},{"name":"shortUrl","kind":"scalar","type":"String","dbName":"short_url"},{"name":"status","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"}],"dbName":"payment_links"},"BoxNumberRequest":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"customerId","kind":"scalar","type":"String","dbName":"customer_id"},{"name":"requestedBy","kind":"scalar","type":"String","dbName":"requested_by"},{"name":"oldBoxNumber","kind":"scalar","type":"String","dbName":"old_box_number"},{"name":"newBoxNumber","kind":"scalar","type":"String","dbName":"new_box_number"},{"name":"remarks","kind":"scalar","type":"String"},{"name":"status","kind":"enum","type":"BoxNumberRequestStatus"},{"name":"reviewedBy","kind":"scalar","type":"String","dbName":"reviewed_by"},{"name":"reviewedAt","kind":"scalar","type":"DateTime","dbName":"reviewed_at"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"},{"name":"customer","kind":"object","type":"Customer","relationName":"BoxNumberRequestToCustomer"},{"name":"requester","kind":"object","type":"User","relationName":"BoxNumberRequests"},{"name":"reviewer","kind":"object","type":"User","relationName":"BoxNumberReviews"}],"dbName":"box_number_requests"}},"enums":{},"types":{}}');
+    config.runtimeDataModel = JSON.parse('{"models":{"User":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"role","kind":"enum","type":"UserRole"},{"name":"name","kind":"scalar","type":"String"},{"name":"mobile","kind":"scalar","type":"String"},{"name":"email","kind":"scalar","type":"String"},{"name":"address","kind":"scalar","type":"String"},{"name":"passwordHash","kind":"scalar","type":"String","dbName":"password_hash"},{"name":"displayPictureUrl","kind":"scalar","type":"String","dbName":"display_picture_url"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"},{"name":"assignedCustomers","kind":"object","type":"Customer","relationName":"AssignedEmployee"},{"name":"transactions","kind":"object","type":"Transaction","relationName":"TransactionToUser"},{"name":"boxNumberRequests","kind":"object","type":"BoxNumberRequest","relationName":"BoxNumberRequests"},{"name":"boxNumberReviews","kind":"object","type":"BoxNumberRequest","relationName":"BoxNumberReviews"},{"name":"statusChangeRequests","kind":"object","type":"CustomerStatusChangeRequest","relationName":"StatusChangeRequests"},{"name":"statusChangeReviews","kind":"object","type":"CustomerStatusChangeRequest","relationName":"StatusChangeReviews"}],"dbName":"users"},"Package":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"price","kind":"scalar","type":"Decimal"},{"name":"recurringType","kind":"enum","type":"RecurringType","dbName":"recurring_type"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"},{"name":"customers","kind":"object","type":"Customer","relationName":"CustomerToPackage"}],"dbName":"packages"},"Customer":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"mobile","kind":"scalar","type":"String"},{"name":"email","kind":"scalar","type":"String"},{"name":"address","kind":"scalar","type":"String"},{"name":"whatsappMobile","kind":"scalar","type":"String","dbName":"whatsapp_mobile"},{"name":"boxNumber","kind":"scalar","type":"String","dbName":"box_number"},{"name":"idNumber","kind":"scalar","type":"String","dbName":"id_number"},{"name":"packageId","kind":"scalar","type":"String","dbName":"package_id"},{"name":"assignedEmployeeId","kind":"scalar","type":"String","dbName":"assigned_employee_id"},{"name":"status","kind":"enum","type":"CustomerStatus"},{"name":"pendingBalance","kind":"scalar","type":"Decimal","dbName":"pending_balance"},{"name":"lastBillingDate","kind":"scalar","type":"DateTime","dbName":"last_billing_date"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"},{"name":"package","kind":"object","type":"Package","relationName":"CustomerToPackage"},{"name":"assignedEmployee","kind":"object","type":"User","relationName":"AssignedEmployee"},{"name":"transactions","kind":"object","type":"Transaction","relationName":"CustomerToTransaction"},{"name":"boxNumberRequests","kind":"object","type":"BoxNumberRequest","relationName":"BoxNumberRequestToCustomer"},{"name":"statusChangeRequests","kind":"object","type":"CustomerStatusChangeRequest","relationName":"CustomerToCustomerStatusChangeRequest"}],"dbName":"customers"},"Transaction":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"customerId","kind":"scalar","type":"String","dbName":"customer_id"},{"name":"transactionId","kind":"scalar","type":"String","dbName":"transaction_id"},{"name":"transactionDate","kind":"scalar","type":"DateTime","dbName":"transaction_date"},{"name":"transactionType","kind":"enum","type":"TransactionType","dbName":"transaction_type"},{"name":"transactionBy","kind":"scalar","type":"String","dbName":"transaction_by"},{"name":"amount","kind":"scalar","type":"Decimal"},{"name":"status","kind":"enum","type":"TransactionStatus"},{"name":"remarks","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"},{"name":"customer","kind":"object","type":"Customer","relationName":"CustomerToTransaction"},{"name":"user","kind":"object","type":"User","relationName":"TransactionToUser"}],"dbName":"transactions"},"PaymentLink":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"customerId","kind":"scalar","type":"String","dbName":"customer_id"},{"name":"razorpayLinkId","kind":"scalar","type":"String","dbName":"razorpay_link_id"},{"name":"shortUrl","kind":"scalar","type":"String","dbName":"short_url"},{"name":"status","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"}],"dbName":"payment_links"},"BoxNumberRequest":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"customerId","kind":"scalar","type":"String","dbName":"customer_id"},{"name":"requestedBy","kind":"scalar","type":"String","dbName":"requested_by"},{"name":"oldBoxNumber","kind":"scalar","type":"String","dbName":"old_box_number"},{"name":"newBoxNumber","kind":"scalar","type":"String","dbName":"new_box_number"},{"name":"remarks","kind":"scalar","type":"String"},{"name":"status","kind":"enum","type":"BoxNumberRequestStatus"},{"name":"reviewedBy","kind":"scalar","type":"String","dbName":"reviewed_by"},{"name":"reviewedAt","kind":"scalar","type":"DateTime","dbName":"reviewed_at"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"},{"name":"customer","kind":"object","type":"Customer","relationName":"BoxNumberRequestToCustomer"},{"name":"requester","kind":"object","type":"User","relationName":"BoxNumberRequests"},{"name":"reviewer","kind":"object","type":"User","relationName":"BoxNumberReviews"}],"dbName":"box_number_requests"},"CustomerStatusChangeRequest":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"customerId","kind":"scalar","type":"String","dbName":"customer_id"},{"name":"requestedBy","kind":"scalar","type":"String","dbName":"requested_by"},{"name":"requestedStatus","kind":"enum","type":"CustomerStatus","dbName":"requested_status"},{"name":"remarks","kind":"scalar","type":"String"},{"name":"status","kind":"enum","type":"CustomerStatusRequestStatus"},{"name":"reviewedBy","kind":"scalar","type":"String","dbName":"reviewed_by"},{"name":"reviewedAt","kind":"scalar","type":"DateTime","dbName":"reviewed_at"},{"name":"createdAt","kind":"scalar","type":"DateTime","dbName":"created_at"},{"name":"customer","kind":"object","type":"Customer","relationName":"CustomerToCustomerStatusChangeRequest"},{"name":"requester","kind":"object","type":"User","relationName":"StatusChangeRequests"},{"name":"reviewer","kind":"object","type":"User","relationName":"StatusChangeReviews"}],"dbName":"customer_status_change_requests"}},"enums":{},"types":{}}');
     defineDmmfProperty2(exports.Prisma, config.runtimeDataModel);
     config.engineWasm = {
       getRuntime: () => require_query_engine_bg(),
@@ -6553,12 +6575,12 @@ var require_postgres_array = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-yuNvX0/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-AQ48ph/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-yuNvX0/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-AQ48ph/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -19855,6 +19877,10 @@ users.delete("/:id", authMiddleware, adminOnly, async (c) => {
       where: { requestedBy: id },
       data: { requestedBy: currentUser.id }
     });
+    await prisma.customerStatusChangeRequest.updateMany({
+      where: { requestedBy: id },
+      data: { requestedBy: currentUser.id }
+    });
     await prisma.user.delete({
       where: { id }
     });
@@ -19934,6 +19960,7 @@ var packages_default = packages;
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
+var customerStatusEnum = external_exports.enum(["ACTIVE", "INACTIVE"]);
 var customerSchema = external_exports.object({
   name: external_exports.string().min(1),
   mobile: external_exports.string().length(10),
@@ -19944,6 +19971,7 @@ var customerSchema = external_exports.object({
   idNumber: external_exports.string().nullable().optional(),
   packageId: external_exports.string().uuid(),
   assignedEmployeeId: external_exports.string().uuid().optional(),
+  status: customerStatusEnum.optional(),
   pendingBalance: external_exports.number().optional()
 });
 var customers = new Hono2().basePath("/customers");
@@ -20161,6 +20189,7 @@ customers.post("/", authMiddleware, adminOnly, async (c) => {
         idNumber: data.idNumber,
         packageId: data.packageId,
         assignedEmployeeId: data.assignedEmployeeId,
+        status: data.status ?? "ACTIVE",
         pendingBalance: 0
       },
       include: {
@@ -20478,6 +20507,12 @@ customers.delete("/:id", authMiddleware, adminOnly, async (c) => {
     await prisma.transaction.deleteMany({
       where: { customerId: id }
     });
+    await prisma.boxNumberRequest.deleteMany({
+      where: { customerId: id }
+    });
+    await prisma.customerStatusChangeRequest.deleteMany({
+      where: { customerId: id }
+    });
     await prisma.customer.delete({
       where: { id }
     });
@@ -20619,6 +20654,7 @@ transactions.get("/", authMiddleware, async (c) => {
     const toDate = c.req.query("toDate");
     const month = c.req.query("month");
     const year = c.req.query("year");
+    const search = c.req.query("search")?.trim();
     const prisma = getPrisma(c.env);
     let startDate;
     let endDate;
@@ -20643,15 +20679,29 @@ transactions.get("/", authMiddleware, async (c) => {
         lte: endDate
       }
     };
+    if (search) {
+      where.customer = {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { boxNumber: { contains: search, mode: "insensitive" } }
+        ]
+      };
+    }
     if (user.role === "EMPLOYEE") {
       const assignedCustomers = await prisma.customer.findMany({
         where: { assignedEmployeeId: user.id },
         select: { id: true }
       });
-      where.OR = [
-        { customerId: { in: assignedCustomers.map((c2) => c2.id) } },
-        { transactionBy: user.id }
+      where.AND = [
+        ...where.AND || [],
+        {
+          OR: [
+            { customerId: { in: assignedCustomers.map((c2) => c2.id) } },
+            { transactionBy: user.id }
+          ]
+        }
       ];
+      delete where.OR;
     }
     const transactions2 = await prisma.transaction.findMany({
       where,
@@ -20745,7 +20795,7 @@ transactions.get("/export", authMiddleware, adminOnly, async (c) => {
     ];
     const rows = transactions2.map((t) => [
       t.customer.name,
-      t.customer.boxNumber,
+      t.customer.boxNumber.toString(),
       t.transactionId,
       t.transactionDate.toISOString(),
       t.transactionType,
@@ -21082,7 +21132,10 @@ dashboard.get("/", authMiddleware, async (c) => {
     tomorrow.setDate(tomorrow.getDate() + 1);
     if (user.role === "EMPLOYEE") {
       const assignedCustomers = await prisma.customer.findMany({
-        where: { assignedEmployeeId: user.id },
+        where: {
+          assignedEmployeeId: user.id,
+          status: "ACTIVE"
+        },
         select: { id: true }
       });
       const customerIds = assignedCustomers.map((c2) => c2.id);
@@ -21119,6 +21172,7 @@ dashboard.get("/", authMiddleware, async (c) => {
       const pendingCustomers = await prisma.customer.count({
         where: {
           assignedEmployeeId: user.id,
+          status: "ACTIVE",
           pendingBalance: {
             gt: 0
           }
@@ -21160,9 +21214,17 @@ dashboard.get("/", authMiddleware, async (c) => {
         todayOnlineAmount: Number(todayOnlineAmount._sum.amount || 0)
       });
     } else {
-      const totalCustomers = await prisma.customer.count();
+      const totalCustomers = await prisma.customer.count({
+        where: { status: "ACTIVE" }
+      });
+      const activeCustomerIds = await prisma.customer.findMany({
+        where: { status: "ACTIVE" },
+        select: { id: true }
+      });
+      const activeIds = activeCustomerIds.map((c2) => c2.id);
       const todayManualTransactions = await prisma.transaction.findMany({
         where: {
+          customerId: { in: activeIds },
           transactionType: "manual",
           status: "paid",
           transactionDate: {
@@ -21177,6 +21239,7 @@ dashboard.get("/", authMiddleware, async (c) => {
       });
       const todayOnlineTransactions = await prisma.transaction.findMany({
         where: {
+          customerId: { in: activeIds },
           transactionType: "online",
           status: "paid",
           transactionDate: {
@@ -21191,6 +21254,7 @@ dashboard.get("/", authMiddleware, async (c) => {
       });
       const todayManualStats = await prisma.transaction.aggregate({
         where: {
+          customerId: { in: activeIds },
           transactionType: "manual",
           status: "paid",
           transactionDate: {
@@ -21205,6 +21269,7 @@ dashboard.get("/", authMiddleware, async (c) => {
       });
       const todayOnlineStats = await prisma.transaction.aggregate({
         where: {
+          customerId: { in: activeIds },
           transactionType: "online",
           status: "paid",
           transactionDate: {
@@ -21227,6 +21292,7 @@ dashboard.get("/", authMiddleware, async (c) => {
         monthEnd.setMonth(monthEnd.getMonth() + 1);
         const manualStats = await prisma.transaction.aggregate({
           where: {
+            customerId: { in: activeIds },
             transactionType: "manual",
             status: "paid",
             transactionDate: {
@@ -21241,6 +21307,7 @@ dashboard.get("/", authMiddleware, async (c) => {
         });
         const onlineStats = await prisma.transaction.aggregate({
           where: {
+            customerId: { in: activeIds },
             transactionType: "online",
             status: "paid",
             transactionDate: {
@@ -21273,6 +21340,7 @@ dashboard.get("/", authMiddleware, async (c) => {
       currentMonthEnd.setHours(0, 0, 0, 0);
       const monthlyStats = await prisma.transaction.aggregate({
         where: {
+          customerId: { in: activeIds },
           status: "paid",
           transactionDate: {
             gte: currentMonthStart,
@@ -21539,6 +21607,261 @@ boxNumberRequests.put("/:id/reject", authMiddleware, adminOnly, async (c) => {
 });
 var boxNumberRequests_default = boxNumberRequests;
 
+// src/routes/boxStatusRequests.ts
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+var createRequestSchema2 = external_exports.object({
+  customerId: external_exports.string().uuid(),
+  requestedStatus: external_exports.enum(["ACTIVE", "INACTIVE"]),
+  remarks: external_exports.string().optional()
+});
+var boxStatusRequests = new Hono2().basePath("/box-status-requests");
+boxStatusRequests.post("/", authMiddleware, async (c) => {
+  try {
+    const user = c.get("user");
+    if (user.role !== "EMPLOYEE") {
+      return c.json(
+        { error: "Only employees can create box status change requests" },
+        403
+      );
+    }
+    const body = await c.req.json();
+    const data = createRequestSchema2.parse(body);
+    const prisma = getPrisma(c.env);
+    const customer = await prisma.customer.findUnique({
+      where: { id: data.customerId }
+    });
+    if (!customer) {
+      return c.json({ error: "Customer not found" }, 404);
+    }
+    if (customer.assignedEmployeeId !== user.id) {
+      return c.json(
+        {
+          error: "You can only request status changes for your assigned customers"
+        },
+        403
+      );
+    }
+    if (customer.status === data.requestedStatus) {
+      return c.json(
+        {
+          error: `Customer is already ${data.requestedStatus.toLowerCase()}`
+        },
+        400
+      );
+    }
+    const existingRequest = await prisma.customerStatusChangeRequest.findFirst({
+      where: {
+        customerId: data.customerId,
+        status: "pending"
+      }
+    });
+    if (existingRequest) {
+      return c.json(
+        {
+          error: "A pending status change request already exists for this customer"
+        },
+        400
+      );
+    }
+    const request = await prisma.customerStatusChangeRequest.create({
+      data: {
+        customerId: data.customerId,
+        requestedBy: user.id,
+        requestedStatus: data.requestedStatus,
+        remarks: data.remarks,
+        status: "pending"
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            boxNumber: true,
+            status: true
+          }
+        },
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true
+          }
+        }
+      }
+    });
+    return c.json({ request }, 201);
+  } catch (error) {
+    if (error instanceof external_exports.ZodError) {
+      return c.json({ error: "Validation error", details: error.errors }, 400);
+    }
+    return c.json(
+      { error: error.message || "Failed to create request" },
+      500
+    );
+  }
+});
+boxStatusRequests.get("/", authMiddleware, async (c) => {
+  try {
+    const user = c.get("user");
+    const prisma = getPrisma(c.env);
+    const where = {};
+    if (user.role === "EMPLOYEE") {
+      where.requestedBy = user.id;
+    }
+    const requests = await prisma.customerStatusChangeRequest.findMany({
+      where,
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            boxNumber: true,
+            mobile: true,
+            status: true
+          }
+        },
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true
+          }
+        },
+        reviewer: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+    return c.json({ requests });
+  } catch (error) {
+    return c.json(
+      { error: error.message || "Failed to fetch requests" },
+      500
+    );
+  }
+});
+boxStatusRequests.put("/:id/approve", authMiddleware, adminOnly, async (c) => {
+  try {
+    const id = c.req.param("id");
+    const user = c.get("user");
+    const prisma = getPrisma(c.env);
+    const request = await prisma.customerStatusChangeRequest.findUnique({
+      where: { id },
+      include: { customer: true }
+    });
+    if (!request) {
+      return c.json({ error: "Request not found" }, 404);
+    }
+    if (request.status !== "pending") {
+      return c.json({ error: "Request is not pending" }, 400);
+    }
+    await prisma.customer.update({
+      where: { id: request.customerId },
+      data: { status: request.requestedStatus }
+    });
+    const updatedRequest = await prisma.customerStatusChangeRequest.update({
+      where: { id },
+      data: {
+        status: "approved",
+        reviewedBy: user.id,
+        reviewedAt: /* @__PURE__ */ new Date()
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            boxNumber: true,
+            status: true
+          }
+        },
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true
+          }
+        },
+        reviewer: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true
+          }
+        }
+      }
+    });
+    return c.json({ request: updatedRequest });
+  } catch (error) {
+    return c.json(
+      { error: error.message || "Failed to approve request" },
+      500
+    );
+  }
+});
+boxStatusRequests.put("/:id/reject", authMiddleware, adminOnly, async (c) => {
+  try {
+    const id = c.req.param("id");
+    const user = c.get("user");
+    const prisma = getPrisma(c.env);
+    const request = await prisma.customerStatusChangeRequest.findUnique({
+      where: { id }
+    });
+    if (!request) {
+      return c.json({ error: "Request not found" }, 404);
+    }
+    if (request.status !== "pending") {
+      return c.json({ error: "Request is not pending" }, 400);
+    }
+    const updatedRequest = await prisma.customerStatusChangeRequest.update({
+      where: { id },
+      data: {
+        status: "rejected",
+        reviewedBy: user.id,
+        reviewedAt: /* @__PURE__ */ new Date()
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            boxNumber: true,
+            status: true
+          }
+        },
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true
+          }
+        },
+        reviewer: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true
+          }
+        }
+      }
+    });
+    return c.json({ request: updatedRequest });
+  } catch (error) {
+    return c.json(
+      { error: error.message || "Failed to reject request" },
+      500
+    );
+  }
+});
+var boxStatusRequests_default = boxStatusRequests;
+
 // src/index.ts
 var app = new Hono2();
 app.use("*", logger());
@@ -21578,6 +21901,7 @@ app.route("/api", payments_default);
 app.route("/api", messaging_default);
 app.route("/api", dashboard_default);
 app.route("/api", boxNumberRequests_default);
+app.route("/api", boxStatusRequests_default);
 app.route("/webhooks", webhooks_default);
 app.notFound((c) => c.json({ error: "Not Found" }, 404));
 app.onError((err2, c) => {
@@ -21690,7 +22014,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-yuNvX0/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-AQ48ph/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -21725,7 +22049,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-yuNvX0/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-AQ48ph/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

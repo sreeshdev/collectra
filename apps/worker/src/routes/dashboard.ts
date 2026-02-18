@@ -16,10 +16,12 @@ dashboard.get("/", authMiddleware, async (c) => {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     if (user.role === "EMPLOYEE") {
-      // Employee Dashboard
-      // Get assigned customers
+      // Employee Dashboard - only active customers
       const assignedCustomers = await prisma.customer.findMany({
-        where: { assignedEmployeeId: user.id },
+        where: {
+          assignedEmployeeId: user.id,
+          status: "ACTIVE",
+        },
         select: { id: true },
       });
       const customerIds = assignedCustomers.map((c) => c.id);
@@ -58,10 +60,11 @@ dashboard.get("/", authMiddleware, async (c) => {
         },
       });
 
-      // 3. Total no of pending customers for that employee
+      // 3. Total no of pending customers for that employee (active only)
       const pendingCustomers = await prisma.customer.count({
         where: {
           assignedEmployeeId: user.id,
+          status: "ACTIVE",
           pendingBalance: {
             gt: 0,
           },
@@ -108,13 +111,21 @@ dashboard.get("/", authMiddleware, async (c) => {
         todayOnlineAmount: Number(todayOnlineAmount._sum.amount || 0),
       });
     } else {
-      // Admin Dashboard
-      // 1. Total no. of customers
-      const totalCustomers = await prisma.customer.count();
+      // Admin Dashboard - only active customers for counts
+      const totalCustomers = await prisma.customer.count({
+        where: { status: "ACTIVE" },
+      });
 
-      // 1. Total no of that employee's customer Manual collection for today
+      // Manual/online collections: only for active customers
+      const activeCustomerIds = await prisma.customer.findMany({
+        where: { status: "ACTIVE" },
+        select: { id: true },
+      });
+      const activeIds = activeCustomerIds.map((c) => c.id);
+
       const todayManualTransactions = await prisma.transaction.findMany({
         where: {
+          customerId: { in: activeIds },
           transactionType: "manual",
           status: "paid",
           transactionDate: {
@@ -128,9 +139,9 @@ dashboard.get("/", authMiddleware, async (c) => {
         },
       });
 
-      // 2. Total no of that employee's customer Online collection for today
       const todayOnlineTransactions = await prisma.transaction.findMany({
         where: {
+          customerId: { in: activeIds },
           transactionType: "online",
           status: "paid",
           transactionDate: {
@@ -144,9 +155,9 @@ dashboard.get("/", authMiddleware, async (c) => {
         },
       });
 
-      // 2. Today no. of manual collections with amount
       const todayManualStats = await prisma.transaction.aggregate({
         where: {
+          customerId: { in: activeIds },
           transactionType: "manual",
           status: "paid",
           transactionDate: {
@@ -160,9 +171,9 @@ dashboard.get("/", authMiddleware, async (c) => {
         },
       });
 
-      // 3. Today No. of online collection with amount
       const todayOnlineStats = await prisma.transaction.aggregate({
         where: {
+          customerId: { in: activeIds },
           transactionType: "online",
           status: "paid",
           transactionDate: {
@@ -188,6 +199,7 @@ dashboard.get("/", authMiddleware, async (c) => {
 
         const manualStats = await prisma.transaction.aggregate({
           where: {
+            customerId: { in: activeIds },
             transactionType: "manual",
             status: "paid",
             transactionDate: {
@@ -203,6 +215,7 @@ dashboard.get("/", authMiddleware, async (c) => {
 
         const onlineStats = await prisma.transaction.aggregate({
           where: {
+            customerId: { in: activeIds },
             transactionType: "online",
             status: "paid",
             transactionDate: {
@@ -239,6 +252,7 @@ dashboard.get("/", authMiddleware, async (c) => {
 
       const monthlyStats = await prisma.transaction.aggregate({
         where: {
+          customerId: { in: activeIds },
           status: "paid",
           transactionDate: {
             gte: currentMonthStart,

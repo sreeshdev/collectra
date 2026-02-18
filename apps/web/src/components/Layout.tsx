@@ -82,6 +82,11 @@ export default function Layout() {
       label: "Box Number Requests",
     },
     {
+      key: "/box-status-requests",
+      icon: <EditOutlined />,
+      label: "Box Status Requests",
+    },
+    {
       key: "/settings",
       icon: <SettingOutlined />,
       label: "Settings",

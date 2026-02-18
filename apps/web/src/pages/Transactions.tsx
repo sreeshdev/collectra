@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, Space, Tag, DatePicker, message, Popconfirm } from "antd";
+import { Button, Space, Tag, DatePicker, message, Popconfirm, Input } from "antd";
 import { DownloadOutlined, DeleteOutlined } from "@ant-design/icons";
 import ResponsiveTable from "../components/ResponsiveTable";
 import api from "../utils/api";
@@ -20,17 +20,21 @@ export default function Transactions() {
     dayjs().startOf("month"),
   );
   const [toDate, setToDate] = useState<Dayjs | null>(dayjs().endOf("month"));
+  const [searchInput, setSearchInput] = useState("");
+  const [searchParam, setSearchParam] = useState("");
 
   const { data: transactions, isLoading } = useQuery({
     queryKey: [
       "transactions",
       fromDate?.format("YYYY-MM-DD"),
       toDate?.format("YYYY-MM-DD"),
+      searchParam,
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate.format("YYYY-MM-DD"));
       if (toDate) params.append("toDate", toDate.format("YYYY-MM-DD"));
+      if (searchParam) params.append("search", searchParam);
 
       const response = await api.get(`/api/transactions?${params.toString()}`);
       return response.data.transactions;
@@ -192,7 +196,7 @@ export default function Transactions() {
         )}
       </div>
 
-      <Space style={{ marginBottom: 16 }}>
+      <Space style={{ marginBottom: 16 }} wrap>
         <DatePicker
           placeholder="From Date"
           value={fromDate}
@@ -206,6 +210,18 @@ export default function Transactions() {
           onChange={setToDate}
           style={{ width: 150 }}
           format="DD/MM/YYYY"
+        />
+        <Input.Search
+          placeholder="Search by customer name or box number"
+          allowClear
+          value={searchInput}
+          onChange={(e) => {
+            const v = e.target.value;
+            setSearchInput(v);
+            if (v === "") setSearchParam("");
+          }}
+          onSearch={(value) => setSearchParam(value ?? "")}
+          style={{ width: 280 }}
         />
       </Space>
 

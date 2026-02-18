@@ -15,6 +15,7 @@ import webhookRoutes from "./routes/webhooks";
 import messagingRoutes from "./routes/messaging";
 import dashboardRoutes from "./routes/dashboard";
 import boxNumberRequestRoutes from "./routes/boxNumberRequests";
+import boxStatusRequestRoutes from "./routes/boxStatusRequests";
 import { authMiddleware } from "./middleware/auth";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -68,6 +69,7 @@ app.route("/api", paymentRoutes);
 app.route("/api", messagingRoutes);
 app.route("/api", dashboardRoutes);
 app.route("/api", boxNumberRequestRoutes);
+app.route("/api", boxStatusRequestRoutes);
 
 // Webhook (no auth)
 app.route("/webhooks", webhookRoutes);

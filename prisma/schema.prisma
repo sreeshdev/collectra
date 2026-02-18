@@ -40,6 +40,17 @@ enum BoxNumberRequestStatus {
   rejected
 }
 
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CustomerStatusRequestStatus {
+  pending
+  approved
+  rejected
+}
+
 model User {
   id                String   @id @default(uuid())
   role              UserRole @default(EMPLOYEE)
@@ -52,10 +63,12 @@ model User {
   createdAt         DateTime @default(now()) @map("created_at")
 
   // Relations
-  assignedCustomers Customer[]         @relation("AssignedEmployee")
-  transactions      Transaction[]
-  boxNumberRequests BoxNumberRequest[] @relation("BoxNumberRequests")
-  boxNumberReviews  BoxNumberRequest[] @relation("BoxNumberReviews")
+  assignedCustomers            Customer[]                      @relation("AssignedEmployee")
+  transactions                 Transaction[]
+  boxNumberRequests            BoxNumberRequest[]              @relation("BoxNumberRequests")
+  boxNumberReviews             BoxNumberRequest[]              @relation("BoxNumberReviews")
+  statusChangeRequests         CustomerStatusChangeRequest[]   @relation("StatusChangeRequests")
+  statusChangeReviews          CustomerStatusChangeRequest[]   @relation("StatusChangeReviews")
 
   @@map("users")
 }
@@ -74,25 +87,27 @@ model Package {
 }
 
 model Customer {
-  id                 String    @id @default(uuid())
+  id                 String         @id @default(uuid())
   name               String
   mobile             String
   email              String?
   address            String?
-  whatsappMobile     String    @map("whatsapp_mobile")
-  boxNumber          String    @unique @map("box_number")
-  idNumber           String?   @map("id_number")
-  packageId          String    @map("package_id")
-  assignedEmployeeId String?   @map("assigned_employee_id")
-  pendingBalance     Decimal   @default(0) @map("pending_balance") @db.Decimal(10, 2)
-  lastBillingDate    DateTime? @map("last_billing_date")
-  createdAt          DateTime  @default(now()) @map("created_at")
+  whatsappMobile     String         @map("whatsapp_mobile")
+  boxNumber          String         @unique @map("box_number")
+  idNumber           String?        @map("id_number")
+  packageId          String         @map("package_id")
+  assignedEmployeeId String?        @map("assigned_employee_id")
+  status             CustomerStatus @default(ACTIVE)
+  pendingBalance     Decimal        @default(0) @map("pending_balance") @db.Decimal(10, 2)
+  lastBillingDate    DateTime?      @map("last_billing_date")
+  createdAt          DateTime       @default(now()) @map("created_at")
 
   // Relations
-  package           Package            @relation(fields: [packageId], references: [id])
-  assignedEmployee  User?              @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])
-  transactions      Transaction[]
-  boxNumberRequests BoxNumberRequest[]
+  package                  Package                      @relation(fields: [packageId], references: [id])
+  assignedEmployee         User?                         @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])
+  transactions             Transaction[]
+  boxNumberRequests        BoxNumberRequest[]
+  statusChangeRequests     CustomerStatusChangeRequest[]
 
   @@map("customers")
 }
@@ -145,4 +160,23 @@ model BoxNumberRequest {
   reviewer  User?    @relation("BoxNumberReviews", fields: [reviewedBy], references: [id])
 
   @@map("box_number_requests")
+}
+
+model CustomerStatusChangeRequest {
+  id               String                     @id @default(uuid())
+  customerId       String                     @map("customer_id")
+  requestedBy      String                     @map("requested_by")
+  requestedStatus  CustomerStatus             @map("requested_status")
+  remarks          String?
+  status           CustomerStatusRequestStatus @default(pending)
+  reviewedBy       String?                    @map("reviewed_by")
+  reviewedAt       DateTime?                 @map("reviewed_at")
+  createdAt        DateTime                   @default(now()) @map("created_at")
+
+  // Relations
+  customer  Customer @relation(fields: [customerId], references: [id])
+  requester User     @relation("StatusChangeRequests", fields: [requestedBy], references: [id])
+  reviewer  User?    @relation("StatusChangeReviews", fields: [reviewedBy], references: [id])
+
+  @@map("customer_status_change_requests")
 }

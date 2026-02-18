@@ -12,6 +12,7 @@ import {
   Popconfirm,
   Popover,
   InputNumber,
+  Tag,
 } from "antd";
 import {
   PlusOutlined,
@@ -34,6 +35,7 @@ interface Customer {
   mobile: string;
   email?: string;
   boxNumber: string;
+  status?: "ACTIVE" | "INACTIVE";
   pendingBalance: number;
   package: { id: string; name: string };
 }
@@ -262,6 +264,16 @@ export default function Customers() {
       render: (balance: number) => `₹${balance}`,
     },
     {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (status: string) => (
+        <Tag color={status === "ACTIVE" ? "green" : "default"}>
+          {status === "ACTIVE" ? "Active" : "Inactive"}
+        </Tag>
+      ),
+    },
+    {
       title: "Actions",
       key: "actions",
       render: (_: any, record: Customer) => {
@@ -441,6 +453,14 @@ export default function Customers() {
             <Form.Item name="idNumber" label="ID Number">
               <Input />
             </Form.Item>
+            {user?.role === "ADMIN" && (
+              <Form.Item name="status" label="Status">
+                <Select>
+                  <Select.Option value="ACTIVE">Active</Select.Option>
+                  <Select.Option value="INACTIVE">Inactive</Select.Option>
+                </Select>
+              </Form.Item>
+            )}
             <Form.Item name="pendingBalance" label="Pending Balance">
               <InputNumber prefix="₹" />
             </Form.Item>

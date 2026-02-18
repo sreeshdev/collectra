@@ -380,10 +380,13 @@ users.delete("/:id", authMiddleware, adminOnly, async (c) => {
       );
     }
 
-    // Reassign any box number requests created by this user to the current admin
-    // so the requestedBy FK is satisfied and we can delete the user
+    // Reassign any box number / status change requests created by this user to the current admin
     const currentUser = c.get("user");
     await prisma.boxNumberRequest.updateMany({
+      where: { requestedBy: id },
+      data: { requestedBy: currentUser.id },
+    });
+    await prisma.customerStatusChangeRequest.updateMany({
       where: { requestedBy: id },
       data: { requestedBy: currentUser.id },
     });

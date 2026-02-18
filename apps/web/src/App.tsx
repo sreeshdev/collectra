@@ -12,6 +12,7 @@ import InitiatePayment from './pages/InitiatePayment'
 import ManualPayment from './pages/ManualPayment'
 import Transactions from './pages/Transactions'
 import BoxNumberRequest from './pages/BoxNumberRequest'
+import BoxStatusRequest from './pages/BoxStatusRequest'
 import Settings from './pages/Settings'
 import Layout from './components/Layout'
 
@@ -83,6 +84,7 @@ function AppRoutes() {
         <Route path="manual-payment" element={<ManualPayment />} />
         <Route path="transactions" element={<Transactions />} />
         <Route path="box-number-requests" element={<BoxNumberRequest />} />
+        <Route path="box-status-requests" element={<BoxStatusRequest />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>

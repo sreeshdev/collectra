@@ -17,16 +17,16 @@ import api from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
 import dayjs from "dayjs";
 
-interface BoxNumberRequest {
+interface StatusChangeRequest {
   id: string;
   customer: {
     id: string;
     name: string;
     boxNumber: string;
     mobile: string;
+    status: string;
   };
-  oldBoxNumber: string;
-  newBoxNumber: string;
+  requestedStatus: "ACTIVE" | "INACTIVE";
   remarks?: string;
   status: "pending" | "approved" | "rejected";
   reviewer?: {
@@ -36,7 +36,7 @@ interface BoxNumberRequest {
   createdAt: string;
 }
 
-export default function BoxNumberRequest() {
+export default function BoxStatusRequest() {
   const { user } = useAuth();
   const [form] = Form.useForm();
   const [modalVisible, setModalVisible] = useState(false);
@@ -53,9 +53,9 @@ export default function BoxNumberRequest() {
   });
 
   const { data: requests, isLoading } = useQuery({
-    queryKey: ["box-number-requests"],
+    queryKey: ["box-status-requests"],
     queryFn: async () => {
-      const response = await api.get("/api/box-number-requests");
+      const response = await api.get("/api/box-status-requests");
       return response.data.requests;
     },
   });
@@ -63,32 +63,34 @@ export default function BoxNumberRequest() {
   const createMutation = useMutation({
     mutationFn: async (values: {
       customerId: string;
-      newBoxNumber: string;
+      requestedStatus: "ACTIVE" | "INACTIVE";
       remarks?: string;
     }) => {
-      const response = await api.post("/api/box-number-requests", values);
+      const response = await api.post("/api/box-status-requests", values);
       return response.data;
     },
     onSuccess: () => {
-      message.success("Box number update request created successfully");
-      queryClient.invalidateQueries({ queryKey: ["box-number-requests"] });
+      message.success("Status change request created successfully");
+      queryClient.invalidateQueries({ queryKey: ["box-status-requests"] });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       setModalVisible(false);
       form.resetFields();
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.error || "Failed to create request");
+      message.error(
+        error.response?.data?.error || "Failed to create request",
+      );
     },
   });
 
   const approveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.put(`/api/box-number-requests/${id}/approve`);
+      const response = await api.put(`/api/box-status-requests/${id}/approve`);
       return response.data;
     },
     onSuccess: () => {
-      message.success("Request approved and box number updated");
-      queryClient.invalidateQueries({ queryKey: ["box-number-requests"] });
+      message.success("Request approved and customer status updated");
+      queryClient.invalidateQueries({ queryKey: ["box-status-requests"] });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
     },
     onError: (error: any) => {
@@ -98,12 +100,12 @@ export default function BoxNumberRequest() {
 
   const rejectMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.put(`/api/box-number-requests/${id}/reject`);
+      const response = await api.put(`/api/box-status-requests/${id}/reject`);
       return response.data;
     },
     onSuccess: () => {
       message.success("Request rejected");
-      queryClient.invalidateQueries({ queryKey: ["box-number-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["box-status-requests"] });
     },
     onError: (error: any) => {
       message.error(error.response?.data?.error || "Failed to reject request");
@@ -114,13 +116,12 @@ export default function BoxNumberRequest() {
     createMutation.mutate(values);
   };
 
-  const filteredRequests = requests?.filter((r: BoxNumberRequest) => {
+  const filteredRequests = requests?.filter((r: StatusChangeRequest) => {
     if (!searchText.trim()) return true;
     const q = searchText.toLowerCase().trim();
     const name = (r.customer?.name ?? "").toLowerCase();
-    const currentBox = (r.oldBoxNumber ?? r.customer?.boxNumber ?? "").toLowerCase();
-    const newBox = (r.newBoxNumber ?? "").toLowerCase();
-    return name.includes(q) || currentBox.includes(q) || newBox.includes(q);
+    const boxNumber = (r.customer?.boxNumber ?? "").toLowerCase();
+    return name.includes(q) || boxNumber.includes(q);
   });
 
   const columns = [
@@ -130,14 +131,29 @@ export default function BoxNumberRequest() {
       key: "customerName",
     },
     {
-      title: "Current Box Number",
-      dataIndex: "oldBoxNumber",
-      key: "oldBoxNumber",
+      title: "Box Number",
+      dataIndex: ["customer", "boxNumber"],
+      key: "boxNumber",
     },
     {
-      title: "New Box Number",
-      dataIndex: "newBoxNumber",
-      key: "newBoxNumber",
+      title: "Current Status",
+      dataIndex: ["customer", "status"],
+      key: "currentStatus",
+      render: (status: string) => (
+        <Tag color={status === "ACTIVE" ? "green" : "default"}>
+          {status === "ACTIVE" ? "Active" : "Inactive"}
+        </Tag>
+      ),
+    },
+    {
+      title: "Requested Status",
+      dataIndex: "requestedStatus",
+      key: "requestedStatus",
+      render: (status: string) => (
+        <Tag color={status === "ACTIVE" ? "green" : "default"}>
+          {status === "ACTIVE" ? "Active" : "Inactive"}
+        </Tag>
+      ),
     },
     {
       title: "Remarks",
@@ -183,7 +199,7 @@ export default function BoxNumberRequest() {
           {
             title: "Actions",
             key: "actions",
-            render: (_: any, record: BoxNumberRequest) => {
+            render: (_: any, record: StatusChangeRequest) => {
               if (record.status !== "pending") {
                 return null;
               }
@@ -240,7 +256,7 @@ export default function BoxNumberRequest() {
           gap: 12,
         }}
       >
-        <h1 style={{ margin: 0 }}>Box Number Update Requests</h1>
+        <h1 style={{ margin: 0 }}>Box Status Change Requests</h1>
         <Space wrap>
           <Input.Search
             placeholder="Search by customer name or box number"
@@ -271,7 +287,7 @@ export default function BoxNumberRequest() {
 
       {user?.role === "EMPLOYEE" && (
         <Modal
-          title="Create Box Number Update Request"
+          title="Create Box Status Change Request"
           open={modalVisible}
           onCancel={() => {
             setModalVisible(false);
@@ -295,27 +311,29 @@ export default function BoxNumberRequest() {
                     .includes(input.toLowerCase())
                 }
                 options={customers?.map((c: any) => ({
-                  label: `${c.name} - Box: ${c.boxNumber}`,
+                  label: `${c.name} - Box: ${c.boxNumber} (${c.status === "ACTIVE" ? "Active" : "Inactive"})`,
                   value: c.id,
                 }))}
               />
             </Form.Item>
 
             <Form.Item
-              name="newBoxNumber"
-              label="New Box Number"
+              name="requestedStatus"
+              label="Requested Status"
               rules={[
-                { required: true, message: "Please enter new box number" },
-                { min: 1, message: "Box number cannot be empty" },
+                { required: true, message: "Please select requested status" },
               ]}
             >
-              <Input placeholder="Enter new box number" />
+              <Select placeholder="Select status">
+                <Select.Option value="ACTIVE">Active</Select.Option>
+                <Select.Option value="INACTIVE">Inactive</Select.Option>
+              </Select>
             </Form.Item>
 
             <Form.Item name="remarks" label="Remarks">
               <Input.TextArea
                 rows={4}
-                placeholder="Enter reason for box number change (optional)"
+                placeholder="Enter reason for status change (optional)"
               />
             </Form.Item>
 

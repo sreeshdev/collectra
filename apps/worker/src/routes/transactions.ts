@@ -19,6 +19,7 @@ transactions.get("/", authMiddleware, async (c) => {
     const toDate = c.req.query("toDate");
     const month = c.req.query("month");
     const year = c.req.query("year");
+    const search = c.req.query("search")?.trim();
 
     const prisma = getPrisma(c.env);
 
@@ -50,6 +51,16 @@ transactions.get("/", authMiddleware, async (c) => {
       },
     };
 
+    // Filter by customer name or box number (admin and employee)
+    if (search) {
+      where.customer = {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { boxNumber: { contains: search, mode: "insensitive" } },
+        ],
+      };
+    }
+
     // Employee can only see transactions for assigned customers and their own transactions
     if (user.role === "EMPLOYEE") {
       const assignedCustomers = await prisma.customer.findMany({
@@ -57,10 +68,16 @@ transactions.get("/", authMiddleware, async (c) => {
         select: { id: true },
       });
 
-      where.OR = [
-        { customerId: { in: assignedCustomers.map((c) => c.id) } },
-        { transactionBy: user.id },
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { customerId: { in: assignedCustomers.map((c) => c.id) } },
+            { transactionBy: user.id },
+          ],
+        },
       ];
+      delete where.OR;
     }
 
     const transactions = await prisma.transaction.findMany({
@@ -165,7 +182,7 @@ transactions.get("/export", authMiddleware, adminOnly, async (c) => {
     ];
     const rows = transactions.map((t) => [
       t.customer.name,
-      t.customer.boxNumber,
+      t.customer.boxNumber.toString(),
       t.transactionId,
       t.transactionDate.toISOString(),
       t.transactionType,
