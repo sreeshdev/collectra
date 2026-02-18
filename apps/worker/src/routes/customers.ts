@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { authMiddleware, adminOnly } from "../middleware/auth";
 import { getPrisma } from "../utils/prisma";
+import { csvField } from "../utils";
 
 const customerStatusEnum = z.enum(["ACTIVE", "INACTIVE"]);
 
@@ -131,17 +132,17 @@ customers.get("/export", authMiddleware, adminOnly, async (c) => {
     ];
 
     const rows = customers.map((customer) => [
-      customer.name || "",
-      customer.mobile || "",
-      customer.email || "",
-      customer.address || "",
-      customer.whatsappMobile || "",
-      customer.boxNumber || "",
-      customer.idNumber || "",
-      customer.package?.name || "",
-      customer.assignedEmployee?.name || "",
-      customer.pendingBalance.toString() || "0",
-      customer.createdAt.toISOString().split("T")[0],
+      csvField(customer.name),
+      csvField(customer.mobile),
+      csvField(customer.email),
+      csvField(customer.address),
+      csvField(customer.whatsappMobile),
+      csvField(customer.boxNumber, true),
+      csvField(customer.idNumber, true),
+      csvField(customer.package?.name),
+      csvField(customer.assignedEmployee?.name),
+      csvField(customer.pendingBalance?.toString() || "0"),
+      csvField(customer.createdAt.toISOString().split("T")[0]),
     ]);
 
     // Escape CSV values (handle commas and quotes)

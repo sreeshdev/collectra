@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { authMiddleware, adminOnly } from "../middleware/auth";
 import { getPrisma } from "../utils/prisma";
+import { csvField } from "../utils";
 
 const manualTransactionSchema = z.object({
   customerId: z.string().uuid(),
@@ -169,7 +170,6 @@ transactions.get("/export", authMiddleware, adminOnly, async (c) => {
       orderBy: { transactionDate: "desc" },
     });
 
-    // Generate CSV (simplified - in production use a proper Excel library)
     const headers = [
       "Customer Name",
       "Box Number",
@@ -181,14 +181,14 @@ transactions.get("/export", authMiddleware, adminOnly, async (c) => {
       "Collected By",
     ];
     const rows = transactions.map((t) => [
-      t.customer.name,
-      t.customer.boxNumber.toString(),
-      t.transactionId,
-      t.transactionDate.toISOString(),
-      t.transactionType,
-      t.amount.toString(),
-      t.status,
-      t.user.name,
+      csvField(t.customer.name),
+      csvField(t.customer.boxNumber, true),
+      csvField(t.transactionId, true), // force text so Excel doesn't show scientific notation
+      csvField(t.transactionDate.toISOString()),
+      csvField(t.transactionType),
+      csvField(t.amount),
+      csvField(t.status),
+      csvField(t.user.name),
     ]);
 
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
