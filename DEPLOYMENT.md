@@ -11,9 +11,17 @@
 ### 2. Backend (Cloudflare Workers)
 - [ ] Install Wrangler: `npm install -g wrangler`
 - [ ] Login: `wrangler login`
+- [ ] **Create Hyperdrive** (prevents "Worker hung" / connection timeout errors):
+  ```bash
+  cd apps/worker
+  # Get your Neon direct (non-pooled) connection string from Neon Dashboard
+  # In Neon: Connection Details → uncheck "Pooled" → copy the string
+  npx wrangler hyperdrive create dish-hobby-db --connection-string="postgresql://user:password@host/database?sslmode=require"
+  # Copy the "id" from the output and paste it into wrangler.toml under [[hyperdrive]] → id = "..."
+  ```
 - [ ] Set secrets:
   ```bash
-  wrangler secret put DATABASE_URL
+  wrangler secret put DATABASE_URL   # Still needed for migrations; optional for Worker if using Hyperdrive
   wrangler secret put JWT_SECRET
   wrangler secret put RAZORPAY_KEY_ID
   wrangler secret put RAZORPAY_KEY_SECRET
@@ -90,10 +98,11 @@ VITE_API_BASE_URL=https://your-worker.workers.dev
 
 ## Troubleshooting
 
-### Database Connection Issues
-- Verify `DATABASE_URL` uses pooling URL
-- Check Neon dashboard for connection status
-- Ensure IP allowlist is configured (if required)
+### Database Connection Issues / "Worker Hung" Errors
+- **Use Hyperdrive** (required for Neon + Workers). Direct Neon connections hang in Workers.
+- Create: `npx wrangler hyperdrive create dish-hobby-db --connection-string="postgresql://..."`
+- Use Neon's **direct** (non-pooled) connection string for Hyperdrive.
+- Update `wrangler.toml` with the Hyperdrive `id` from the create command output.
 
 ### CORS Issues
 - Verify `APP_BASE_URL` matches frontend URL exactly

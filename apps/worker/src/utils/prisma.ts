@@ -1,9 +1,12 @@
+import { Pool } from "pg";
 import { PrismaClient } from "@prisma/client";
-import { PrismaNeon } from "@prisma/adapter-neon";
-import { Pool } from "@neondatabase/serverless";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 export interface Env {
-  DATABASE_URL: string;
+  /** Hyperdrive binding (recommended for Workers - prevents connection hangs) */
+  HYPERDRIVE?: { connectionString: string };
+  /** Direct DB URL (used when HYPERDRIVE is not configured, e.g. local dev) */
+  DATABASE_URL?: string;
   JWT_SECRET: string;
   RAZORPAY_KEY_ID: string;
   RAZORPAY_KEY_SECRET: string;
@@ -15,18 +18,17 @@ export interface Env {
 }
 
 export function getPrisma(env: Env) {
-  try {
-    // Create Pool with connection string as an object
-    // The Pool constructor expects { connectionString: string }
-    const pool = new Pool({ connectionString: env.DATABASE_URL });
+  // Prefer Hyperdrive (prevents Neon WebSocket hangs in Workers)
+  const connectionString =
+    env.HYPERDRIVE?.connectionString ?? env.DATABASE_URL;
 
-    // Create the Neon adapter with the pool
-    const adapter = new PrismaNeon(pool);
-
-    // Create and return Prisma Client with the adapter
-    return new PrismaClient({ adapter });
-  } catch (error) {
-    console.error("Error creating Prisma client:", error);
-    throw error;
+  if (!connectionString) {
+    throw new Error(
+      "Database not configured: set HYPERDRIVE binding or DATABASE_URL secret"
+    );
   }
+
+  const pool = new Pool({ connectionString });
+  const adapter = new PrismaPg(pool);
+  return new PrismaClient({ adapter });
 }

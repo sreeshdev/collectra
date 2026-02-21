@@ -1,12 +1,23 @@
 name = "dish-hobby-worker"
 main = "src/index.ts"
-compatibility_date = "2023-12-01"
+compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 # Cron trigger - runs on 2nd of every month at 11:00 UTC
 [triggers]
 crons = ["0 11 2 * *"]
 
+[observability]
+[observability.logs]
+enabled = false
+invocation_logs = true
+
+# Hyperdrive: connection pooling to prevent Neon/DB hangs in Workers.
+# Create with: npx wrangler hyperdrive create dish-hobby-db --connection-string="postgres://USER:PASSWORD@HOST/database?sslmode=require"
+# Use Neon's direct (non-pooled) connection string - uncheck "Pooled" in Neon dashboard.
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "a10fdd49d1e34291a14352b5910bf3c4"
 
 # Environment variables should be set via:
 # 1. Cloudflare Dashboard → Workers → Settings → Variables

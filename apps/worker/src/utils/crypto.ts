@@ -35,7 +35,6 @@ export async function verifyPassword(
     const hashHex = hashArray
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
-    console.log(hashHex, storedHash);
     // Compare hashes
     return hashHex === storedHash;
   } catch (error) {

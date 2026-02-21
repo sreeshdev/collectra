@@ -20,29 +20,35 @@ import { authMiddleware } from "./middleware/auth";
 
 const app = new Hono<{ Bindings: Env }>();
 
+// CORS: allowed origins - add APP_BASE_URL via wrangler secret for extra prod origins
+const CORS_ALLOWED = new Set([
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://collectra.pages.dev",
+]);
+
+function getAllowedOrigin(origin: string | undefined, env?: Env): string | null {
+  const allowed = new Set(CORS_ALLOWED);
+  if (env?.APP_BASE_URL) allowed.add(env.APP_BASE_URL);
+
+  if (origin) {
+    if (allowed.has(origin)) return origin;
+    // Allow Cloudflare Pages branch/preview URLs (e.g. abc123-collectra.pages.dev)
+    if (origin.endsWith(".collectra.pages.dev")) return origin;
+  }
+
+  // No origin (curl / server-to-server)
+  if (!origin) return allowed.values().next().value ?? "*";
+  return null;
+}
+
 // Middleware
 app.use("*", logger());
 app.use("*", prettyJSON());
 app.use(
   "*",
   cors({
-    origin: (origin) => {
-      const allowed = new Set([
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "https://collectra.pages.dev",
-        // c.env?.APP_BASE_URL, // set this to your prod frontend too
-      ]);
-
-      // If request has Origin, echo it back if allowed
-      if (origin && allowed.has(origin)) return origin;
-
-      // No origin (curl / server-to-server)
-      if (!origin) return "*";
-
-      // Block others
-      return null;
-    },
+    origin: (origin: string) => getAllowedOrigin(origin),
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
@@ -74,12 +80,40 @@ app.route("/api", boxStatusRequestRoutes);
 // Webhook (no auth)
 app.route("/webhooks", webhookRoutes);
 
-app.notFound((c) => c.json({ error: "Not Found" }, 404));
+function addCorsToResponse(c: { req: { header: (n: string) => string | undefined }; env?: Env }, res: Response): Response {
+  const allowOrigin = getAllowedOrigin(c.req.header("Origin"), c.env);
+  if (allowOrigin) {
+    res.headers.set("Access-Control-Allow-Origin", allowOrigin);
+    res.headers.set("Access-Control-Allow-Credentials", "true");
+    res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+  return res;
+}
+
+app.notFound((c) => addCorsToResponse(c, c.json({ error: "Not Found" }, 404)));
 
 app.onError((err, c) => {
   console.error(err);
-  return c.json({ error: "Internal Server Error" }, 500);
+  return addCorsToResponse(c, c.json({ error: "Internal Server Error" }, 500));
 });
+
+// Build a JSON 500 response with CORS headers (used when Worker crashes before Hono)
+function buildCorsErrorResponse(request: Request, env: Env, message = "Internal Server Error"): Response {
+  const origin = request.headers.get("Origin");
+  const allowOrigin = getAllowedOrigin(origin ?? undefined, env);
+  const res = new Response(
+    JSON.stringify({ error: message }),
+    { status: 500, headers: { "Content-Type": "application/json" } },
+  );
+  if (allowOrigin) {
+    res.headers.set("Access-Control-Allow-Origin", allowOrigin);
+    res.headers.set("Access-Control-Allow-Credentials", "true");
+    res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+  return res;
+}
 
 // Cron handler
 export default {
@@ -88,7 +122,14 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
-    return app.fetch(request, env, ctx);
+    try {
+      return await app.fetch(request, env, ctx);
+    } catch (err) {
+      // Catch any error before Hono (e.g. Neon connection, unhandled rejection)
+      // so we return JSON with CORS instead of Cloudflare's HTML error page
+      console.error("[Worker crash]", err);
+      return buildCorsErrorResponse(request, env);
+    }
   },
   async scheduled(
     event: ScheduledEvent,
