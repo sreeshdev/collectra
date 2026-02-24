@@ -104,7 +104,7 @@ payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
       );
     }
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Single batch for this request (we already cap at BULK_MAX_CUSTOMERS_PER_REQUEST)
     const batches: string[][] = [customerIds];

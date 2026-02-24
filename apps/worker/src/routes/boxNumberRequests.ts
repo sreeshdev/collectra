@@ -24,7 +24,7 @@ boxNumberRequests.post("/", authMiddleware, async (c) => {
     const body = await c.req.json();
     const data = createRequestSchema.parse(body);
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Check if customer exists and is assigned to this employee
     const customer = await prisma.customer.findUnique({
@@ -101,7 +101,7 @@ boxNumberRequests.post("/", authMiddleware, async (c) => {
 boxNumberRequests.get("/", authMiddleware, async (c) => {
   try {
     const user = c.get("user");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const where: any = {};
     
@@ -150,7 +150,7 @@ boxNumberRequests.put("/:id/approve", authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param("id");
     const user = c.get("user");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const request = await prisma.boxNumberRequest.findUnique({
       where: { id },
@@ -227,7 +227,7 @@ boxNumberRequests.put("/:id/reject", authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param("id");
     const user = c.get("user");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const request = await prisma.boxNumberRequest.findUnique({
       where: { id },

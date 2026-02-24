@@ -8,7 +8,7 @@ const dashboard = new Hono().basePath("/dashboard");
 dashboard.get("/", authMiddleware, async (c) => {
   try {
     const user = c.get("user");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);

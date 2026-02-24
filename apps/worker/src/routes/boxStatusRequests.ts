@@ -26,7 +26,7 @@ boxStatusRequests.post("/", authMiddleware, async (c) => {
     const body = await c.req.json();
     const data = createRequestSchema.parse(body);
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const customer = await prisma.customer.findUnique({
       where: { id: data.customerId },
@@ -113,7 +113,7 @@ boxStatusRequests.post("/", authMiddleware, async (c) => {
 boxStatusRequests.get("/", authMiddleware, async (c) => {
   try {
     const user = c.get("user");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const where: any = {};
     if (user.role === "EMPLOYEE") {
@@ -164,7 +164,7 @@ boxStatusRequests.put("/:id/approve", authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param("id");
     const user = c.get("user");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const request = await prisma.customerStatusChangeRequest.findUnique({
       where: { id },
@@ -231,7 +231,7 @@ boxStatusRequests.put("/:id/reject", authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param("id");
     const user = c.get("user");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const request = await prisma.customerStatusChangeRequest.findUnique({
       where: { id },

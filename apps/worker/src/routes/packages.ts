@@ -15,7 +15,7 @@ const packages = new Hono().basePath('/packages');
 // Get all packages
 packages.get('/', authMiddleware, async (c) => {
   try {
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
     const packages = await prisma.package.findMany({
       orderBy: { createdAt: 'desc' },
     });
@@ -32,7 +32,7 @@ packages.post('/', authMiddleware, adminOnly, async (c) => {
     const body = await c.req.json();
     const data = packageSchema.parse(body);
     
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
     
     const pkg = await prisma.package.create({
       data: {
@@ -58,7 +58,7 @@ packages.put('/:id', authMiddleware, adminOnly, async (c) => {
     const body = await c.req.json();
     const data = packageSchema.parse(body);
     
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
     
     const pkg = await prisma.package.update({
       where: { id },

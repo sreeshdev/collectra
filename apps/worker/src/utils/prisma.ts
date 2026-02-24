@@ -17,13 +17,14 @@ export interface Env {
   APP_BASE_URL: string;
 }
 
-// Reuse Pool + Prisma across requests in the same Worker isolate.
-// Creating a new Pool per request exhausts DB connections → 500/503 errors.
-let cached:
-  | { connectionString: string; prisma: PrismaClient }
-  | null = null;
+declare module "hono" {
+  interface ContextVariableMap {
+    prisma: PrismaClient;
+  }
+}
 
-export function getPrisma(env: Env) {
+/** Create a fresh Prisma client. Caller must $disconnect() when done (e.g. for cron). */
+export function createPrisma(env: Env): PrismaClient {
   const connectionString =
     env.HYPERDRIVE?.connectionString ?? env.DATABASE_URL;
 
@@ -33,18 +34,33 @@ export function getPrisma(env: Env) {
     );
   }
 
-  if (cached?.connectionString === connectionString) {
-    return cached.prisma;
-  }
-
   const pool = new Pool({
     connectionString,
-    max: 2,
-    idleTimeoutMillis: 10_000,
-    connectionTimeoutMillis: 5_000,
+    max: 1,
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 15_000,
   });
   const adapter = new PrismaPg(pool);
-  const prisma = new PrismaClient({ adapter });
-  cached = { connectionString, prisma };
+  return new PrismaClient({ adapter });
+}
+
+/**
+ * Get Prisma for a request. Creates per request, schedules $disconnect via waitUntil.
+ * Must be used with context that has __executionCtx in env (injected by Worker fetch handler).
+ */
+export function getPrisma(
+  c: { env: Env & { __executionCtx?: ExecutionContext }; get: (k: "prisma") => PrismaClient | undefined; set: (k: "prisma", v: PrismaClient) => void }
+): PrismaClient {
+  const existing = c.get("prisma");
+  if (existing) return existing;
+
+  const prisma = createPrisma(c.env);
+  c.set("prisma", prisma);
+
+  const execCtx = c.env.__executionCtx;
+  if (execCtx) {
+    execCtx.waitUntil(prisma.$disconnect());
+  }
+
   return prisma;
 }

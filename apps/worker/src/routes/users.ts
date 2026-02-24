@@ -20,7 +20,7 @@ const users = new Hono().basePath("/users");
 // Get all users (Admin only)
 users.get("/", authMiddleware, adminOnly, async (c) => {
   try {
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -47,7 +47,7 @@ users.post("/", authMiddleware, adminOnly, async (c) => {
     const body = await c.req.json();
     const data = userSchema.parse(body);
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Check if mobile already exists
     const existing = await prisma.user.findUnique({
@@ -100,7 +100,7 @@ users.put("/:id", authMiddleware, adminOnly, async (c) => {
     const body = await c.req.json();
     const data = updateUserSchema.parse(body);
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const updateData: any = { ...data };
     if (data.password) {
@@ -139,7 +139,7 @@ users.put("/me", authMiddleware, async (c) => {
     const body = await c.req.json();
     const data = updateUserSchema.parse(body);
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const updateData: any = { ...data };
     delete updateData.password; // Don't allow password change here
@@ -172,7 +172,7 @@ users.put("/me", authMiddleware, async (c) => {
 users.get("/:id/customers", authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param("id");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -208,7 +208,7 @@ users.get("/:id/customers", authMiddleware, adminOnly, async (c) => {
 users.get("/:id/employee-stats", authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param("id");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Check if user exists
     const user = await prisma.user.findUnique({
@@ -349,7 +349,7 @@ users.get("/:id/employee-stats", authMiddleware, adminOnly, async (c) => {
 users.delete("/:id", authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param("id");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Check if user exists
     const user = await prisma.user.findUnique({

@@ -53,7 +53,7 @@ webhooks.post('/razorpay', async (c) => {
       return c.json({ error: 'Invalid payload' }, 400);
     }
     
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
     
     // Find transaction by Razorpay payment link ID
     const transaction = await prisma.transaction.findFirst({

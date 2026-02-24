@@ -19,7 +19,7 @@ messaging.post('/whatsapp/send-payment-link', authMiddleware, async (c) => {
     const body = await c.req.json();
     const { customerId, amount, link, dueMonth } = sendPaymentLinkSchema.parse(body);
     
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
     
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },

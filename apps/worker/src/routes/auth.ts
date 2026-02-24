@@ -29,7 +29,7 @@ auth.post("/login", async (c) => {
     const body = await c.req.json();
     const { mobile, password } = loginSchema.parse(body);
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
     const user = await prisma.user.findUnique({
       where: { mobile },
     });
@@ -76,7 +76,7 @@ auth.post("/login", async (c) => {
 auth.get("/me", authMiddleware, async (c) => {
   try {
     const user = c.get("user");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const userData = await prisma.user.findUnique({
       where: { id: user.id },
@@ -109,7 +109,7 @@ auth.post("/change-password", authMiddleware, async (c) => {
     const body = await c.req.json();
     const { currentPassword, newPassword } = changePasswordSchema.parse(body);
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
     const userData = await prisma.user.findUnique({
       where: { id: user.id },
     });

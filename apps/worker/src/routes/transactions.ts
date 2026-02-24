@@ -22,7 +22,7 @@ transactions.get("/", authMiddleware, async (c) => {
     const year = c.req.query("year");
     const search = c.req.query("search")?.trim();
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     let startDate: Date;
     let endDate: Date;
@@ -120,7 +120,7 @@ transactions.get("/export", authMiddleware, adminOnly, async (c) => {
     const month = c.req.query("month");
     const year = c.req.query("year");
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     let startDate: Date;
     let endDate: Date;
@@ -213,7 +213,7 @@ transactions.post("/manual", authMiddleware, async (c) => {
     const body = await c.req.json();
     const { customerId, amount, remarks } = manualTransactionSchema.parse(body);
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Check customer exists
     const customer = await prisma.customer.findUnique({
@@ -274,7 +274,7 @@ transactions.post("/manual", authMiddleware, async (c) => {
 transactions.delete("/:id", authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param("id");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const transaction = await prisma.transaction.findUnique({
       where: { id },

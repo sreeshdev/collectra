@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { prettyJSON } from "hono/pretty-json";
-import { getPrisma, type Env } from "./utils/prisma";
+import { createPrisma, getPrisma, type Env } from "./utils/prisma";
 
 // Import routes
 import authRoutes from "./routes/auth";
@@ -123,7 +123,7 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     try {
-      return await app.fetch(request, env, ctx);
+      return await app.fetch(request, { ...env, __executionCtx: ctx } as Env & { __executionCtx: ExecutionContext }, ctx);
     } catch (err) {
       // Catch any error before Hono (e.g. Neon connection, unhandled rejection)
       // so we return JSON with CORS instead of Cloudflare's HTML error page
@@ -141,10 +141,9 @@ export default {
 };
 
 async function handleCron(env: Env) {
+  const prisma = createPrisma(env);
   try {
     console.log("Cron triggered: Processing monthly payment reminders");
-
-    const prisma = getPrisma(env);
 
     const today = new Date();
     const currentDay = today.getDate();
@@ -209,6 +208,8 @@ async function handleCron(env: Env) {
     console.log("Cron completed");
   } catch (error) {
     console.error("Cron error:", error);
+  } finally {
+    await prisma.$disconnect();
   }
 }
 

@@ -26,7 +26,7 @@ const customers = new Hono().basePath("/customers");
 customers.get("/", authMiddleware, async (c) => {
   try {
     const user = c.get("user");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const where: any = {};
     if (user.role === "EMPLOYEE") {
@@ -59,7 +59,7 @@ customers.get("/search", authMiddleware, async (c) => {
   try {
     const user = c.get("user");
     const query = c.req.query("q") || "";
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const where: any = {
       OR: [
@@ -100,7 +100,7 @@ customers.get("/search", authMiddleware, async (c) => {
 // Export customers as CSV (Admin only) - MUST be before /:id route
 customers.get("/export", authMiddleware, adminOnly, async (c) => {
   try {
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const customers = await prisma.customer.findMany({
       include: {
@@ -179,7 +179,7 @@ customers.get("/:id", authMiddleware, async (c) => {
   try {
     const user = c.get("user");
     const id = c.req.param("id");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const customer = await prisma.customer.findUnique({
       where: { id },
@@ -216,7 +216,7 @@ customers.get("/:id/transactions", authMiddleware, async (c) => {
   try {
     const user = c.get("user");
     const id = c.req.param("id");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Check if customer exists and employee has access
     const customer = await prisma.customer.findUnique({
@@ -260,7 +260,7 @@ customers.post("/", authMiddleware, adminOnly, async (c) => {
     const body = await c.req.json();
     const data = customerSchema.parse(body);
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Check if box number already exists
     const existing = await prisma.customer.findUnique({
@@ -312,7 +312,7 @@ customers.put("/:id", authMiddleware, adminOnly, async (c) => {
     const body = await c.req.json();
     const data = customerSchema.partial().parse(body);
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     const customer = await prisma.customer.update({
       where: { id },
@@ -444,7 +444,7 @@ customers.post("/import", authMiddleware, adminOnly, async (c) => {
       );
     }
 
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Get all packages and employees for validation
     const [packages, employees] = await Promise.all([
@@ -647,7 +647,7 @@ customers.post("/import", authMiddleware, adminOnly, async (c) => {
 customers.delete("/:id", authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param("id");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Check if customer exists
     const customer = await prisma.customer.findUnique({
@@ -689,7 +689,7 @@ customers.get("/:id/employee-view", authMiddleware, async (c) => {
   try {
     const user = c.get("user");
     const id = c.req.param("id");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Check if customer exists and employee has access
     const customer = await prisma.customer.findUnique({
@@ -798,7 +798,7 @@ customers.get("/:id/employee-view", authMiddleware, async (c) => {
 customers.delete("/:id", authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param("id");
-    const prisma = getPrisma(c.env);
+    const prisma = getPrisma(c);
 
     // Check if customer exists
     const customer = await prisma.customer.findUnique({
