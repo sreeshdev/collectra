@@ -5,10 +5,10 @@
   "scripts": {
     "dev": "./load-env.sh wrangler dev",
     "deploy": "wrangler deploy",
-    "db:generate": "prisma generate --schema=../../prisma/schema.prisma",
-    "db:migrate": "./load-env.sh prisma migrate deploy --schema=../../prisma/schema.prisma",
-    "db:migrate:dev": "./load-env.sh prisma migrate dev --schema=../../prisma/schema.prisma",
-    "db:studio": "./load-env.sh prisma studio --schema=../../prisma/schema.prisma",
+    "db:generate": "npx prisma generate --schema=../../prisma/schema.prisma",
+    "db:migrate": "./load-env.sh npx prisma migrate deploy --schema=../../prisma/schema.prisma",
+    "db:migrate:dev": "./load-env.sh npx prisma migrate dev --schema=../../prisma/schema.prisma",
+    "db:studio": "./load-env.sh npx prisma studio --schema=../../prisma/schema.prisma",
     "db:seed": "./load-env.sh npx tsx ../../prisma/seed.ts"
   },
   "dependencies": {

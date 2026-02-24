@@ -70,6 +70,8 @@ model User {
   statusChangeRequests         CustomerStatusChangeRequest[]   @relation("StatusChangeRequests")
   statusChangeReviews          CustomerStatusChangeRequest[]   @relation("StatusChangeReviews")
 
+  @@index([role])
+
   @@map("users")
 }
 
@@ -82,6 +84,8 @@ model Package {
 
   // Relations
   customers Customer[]
+
+  @@index([createdAt])
 
   @@map("packages")
 }
@@ -109,6 +113,13 @@ model Customer {
   boxNumberRequests        BoxNumberRequest[]
   statusChangeRequests     CustomerStatusChangeRequest[]
 
+  @@index([packageId])
+  @@index([assignedEmployeeId])
+  @@index([status])
+  @@index([assignedEmployeeId, status])
+  @@index([status, pendingBalance])
+  @@index([createdAt])
+
   @@map("customers")
 }
 
@@ -128,6 +139,15 @@ model Transaction {
   customer Customer @relation(fields: [customerId], references: [id])
   user     User     @relation(fields: [transactionBy], references: [id])
 
+  @@index([customerId])
+  @@index([transactionBy])
+  @@index([transactionDate])
+  @@index([status])
+  @@index([transactionType])
+  @@index([customerId, transactionDate])
+  @@index([transactionDate, status, transactionType])
+  @@index([createdAt])
+
   @@map("transactions")
 }
 
@@ -138,6 +158,10 @@ model PaymentLink {
   shortUrl       String?  @map("short_url")
   status         String   @default("pending")
   createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@index([razorpayLinkId])
+  @@index([status])
 
   @@map("payment_links")
 }
@@ -159,6 +183,13 @@ model BoxNumberRequest {
   requester User     @relation("BoxNumberRequests", fields: [requestedBy], references: [id])
   reviewer  User?    @relation("BoxNumberReviews", fields: [reviewedBy], references: [id])
 
+  @@index([customerId])
+  @@index([requestedBy])
+  @@index([status])
+  @@index([reviewedBy])
+  @@index([status, createdAt])
+  @@index([createdAt])
+
   @@map("box_number_requests")
 }
 
@@ -177,6 +208,13 @@ model CustomerStatusChangeRequest {
   customer  Customer @relation(fields: [customerId], references: [id])
   requester User     @relation("StatusChangeRequests", fields: [requestedBy], references: [id])
   reviewer  User?    @relation("StatusChangeReviews", fields: [reviewedBy], references: [id])
+
+  @@index([customerId])
+  @@index([requestedBy])
+  @@index([status])
+  @@index([reviewedBy])
+  @@index([status, createdAt])
+  @@index([createdAt])
 
   @@map("customer_status_change_requests")
 }

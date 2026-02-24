@@ -17,8 +17,13 @@ export interface Env {
   APP_BASE_URL: string;
 }
 
+// Reuse Pool + Prisma across requests in the same Worker isolate.
+// Creating a new Pool per request exhausts DB connections → 500/503 errors.
+let cached:
+  | { connectionString: string; prisma: PrismaClient }
+  | null = null;
+
 export function getPrisma(env: Env) {
-  // Prefer Hyperdrive (prevents Neon WebSocket hangs in Workers)
   const connectionString =
     env.HYPERDRIVE?.connectionString ?? env.DATABASE_URL;
 
@@ -28,7 +33,18 @@ export function getPrisma(env: Env) {
     );
   }
 
-  const pool = new Pool({ connectionString });
+  if (cached?.connectionString === connectionString) {
+    return cached.prisma;
+  }
+
+  const pool = new Pool({
+    connectionString,
+    max: 2,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 5_000,
+  });
   const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter });
+  const prisma = new PrismaClient({ adapter });
+  cached = { connectionString, prisma };
+  return prisma;
 }
