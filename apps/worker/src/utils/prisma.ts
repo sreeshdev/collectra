@@ -38,7 +38,7 @@ export function createPrisma(env: Env): PrismaClient {
     connectionString,
     max: 1,
     idleTimeoutMillis: 5_000,
-    connectionTimeoutMillis: 15_000,
+    connectionTimeoutMillis: 20_000, // Neon cold start can take several seconds
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });

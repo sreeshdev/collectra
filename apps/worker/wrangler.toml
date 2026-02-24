@@ -9,7 +9,7 @@ crons = ["0 11 2 * *"]
 
 [observability]
 [observability.logs]
-enabled = false
+enabled = true
 invocation_logs = true
 
 # Hyperdrive: connection pooling to prevent Neon/DB hangs in Workers.

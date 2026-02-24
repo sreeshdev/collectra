@@ -94,8 +94,23 @@ function addCorsToResponse(c: { req: { header: (n: string) => string | undefined
 app.notFound((c) => addCorsToResponse(c, c.json({ error: "Not Found" }, 404)));
 
 app.onError((err, c) => {
-  console.error(err);
-  return addCorsToResponse(c, c.json({ error: "Internal Server Error" }, 500));
+  try {
+    console.error(err);
+    return addCorsToResponse(c, c.json({ error: "Internal Server Error" }, 500));
+  } catch (handlerErr) {
+    console.error("[onError handler failed]", handlerErr);
+    const body = JSON.stringify({ error: "Internal Server Error" });
+    const res = new Response(body, { status: 500, headers: { "Content-Type": "application/json" } });
+    const origin = c.req.header("Origin");
+    const allowOrigin = getAllowedOrigin(origin ?? undefined, c.env);
+    if (allowOrigin) {
+      res.headers.set("Access-Control-Allow-Origin", allowOrigin);
+      res.headers.set("Access-Control-Allow-Credentials", "true");
+      res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+      res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
+    return res;
+  }
 });
 
 // Build a JSON 500 response with CORS headers (used when Worker crashes before Hono)
@@ -115,6 +130,17 @@ function buildCorsErrorResponse(request: Request, env: Env, message = "Internal 
   return res;
 }
 
+function isConnectionTimeout(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /timeout exceeded when trying to connect|connection timeout|ETIMEDOUT|Connection terminated unexpectedly/i.test(msg);
+}
+
+function canRetryRequest(request: Request): boolean {
+  const method = request.method;
+  const hasBody = request.body != null && (request.headers.get("content-length") !== "0" || request.headers.has("transfer-encoding"));
+  return (method === "GET" || method === "HEAD" || method === "OPTIONS") && !hasBody;
+}
+
 // Cron handler
 export default {
   async fetch(
@@ -122,13 +148,31 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
+    const boundEnv = { ...env, __executionCtx: ctx } as Env & { __executionCtx: ExecutionContext };
+
     try {
-      return await app.fetch(request, { ...env, __executionCtx: ctx } as Env & { __executionCtx: ExecutionContext }, ctx);
+      const res = await app.fetch(request, boundEnv, ctx);
+      return res;
     } catch (err) {
-      // Catch any error before Hono (e.g. Neon connection, unhandled rejection)
-      // so we return JSON with CORS instead of Cloudflare's HTML error page
-      console.error("[Worker crash]", err);
-      return buildCorsErrorResponse(request, env);
+      // Retry only for GET/HEAD (no body) - POST body can't be re-read
+      if (canRetryRequest(request) && isConnectionTimeout(err)) {
+        try {
+          return await app.fetch(request, boundEnv, ctx);
+        } catch (retryErr) {
+          console.error("[Worker retry failed]", retryErr);
+        }
+      } else {
+        console.error("[Worker crash]", err);
+      }
+      try {
+        return buildCorsErrorResponse(request, env);
+      } catch (finalErr) {
+        console.error("[Worker fatal - could not build error response]", finalErr);
+        return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
     }
   },
   async scheduled(
