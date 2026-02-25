@@ -136,6 +136,20 @@ payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
 
           for (const customer of customers) {
             const price = Number(customer.package.price);
+            const paymentLink = await createRazorpayPaymentLink(
+              customer,
+              c.env,
+            );
+            await prisma.transaction.create({
+              data: {
+                customerId: customer.id,
+                transactionId: paymentLink?.id || "",
+                transactionType: "payment_link",
+                transactionBy: "system", // System user
+                amount: customer.package.price,
+                status: "pending",
+              },
+            });
             await tx.customer.update({
               where: { id: customer.id },
               data: {
