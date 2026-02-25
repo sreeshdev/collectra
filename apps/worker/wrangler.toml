@@ -15,6 +15,10 @@ invocation_logs = true
 # Hyperdrive: connection pooling to prevent Neon/DB hangs in Workers.
 # Create with: npx wrangler hyperdrive create dish-hobby-db --connection-string="postgres://USER:PASSWORD@HOST/database?sslmode=require"
 # Use Neon's direct (non-pooled) connection string - uncheck "Pooled" in Neon dashboard.
+#
+# Local dev: run via `yarn dev` (uses load-env.sh) which sets WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE
+# from DATABASE_URL in .dev.vars. Or add to .dev.vars:
+#   WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgresql://..."
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "a10fdd49d1e34291a14352b5910bf3c4"

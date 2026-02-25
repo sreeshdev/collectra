@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, Modal, message, Tag, Input, Space } from "antd";
+import { Button, Modal, message, Tag, Input, Space, Checkbox } from "antd";
 import { DollarOutlined } from "@ant-design/icons";
 import ResponsiveTable from "../components/ResponsiveTable";
 import api from "../utils/api";
@@ -18,6 +18,7 @@ export default function InitiatePayment() {
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [sendRazorpayLink, setSendRazorpayLink] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -32,7 +33,13 @@ export default function InitiatePayment() {
   const BULK_BATCH_SIZE = 50; // Must match API max per request to avoid 503
 
   const initiateMutation = useMutation({
-    mutationFn: async (customerIds: string[]) => {
+    mutationFn: async ({
+      customerIds,
+      sendRazorpayLink,
+    }: {
+      customerIds: string[];
+      sendRazorpayLink: boolean;
+    }) => {
       const chunks: string[][] = [];
       for (let i = 0; i < customerIds.length; i += BULK_BATCH_SIZE) {
         chunks.push(customerIds.slice(i, i + BULK_BATCH_SIZE));
@@ -47,6 +54,7 @@ export default function InitiatePayment() {
         });
         const response = await api.post("/api/payments/initiate-bulk", {
           customerIds: chunks[i],
+          sendRazorpayLink,
         });
         const data = response.data;
         if (data.success && data.updated != null) {
@@ -85,7 +93,10 @@ export default function InitiatePayment() {
   };
 
   const handleConfirm = () => {
-    initiateMutation.mutate(selectedCustomerIds);
+    initiateMutation.mutate({
+      customerIds: selectedCustomerIds,
+      sendRazorpayLink,
+    });
   };
 
   const filteredCustomers = customers?.filter((c: Customer) => {
@@ -203,9 +214,16 @@ export default function InitiatePayment() {
         </p>
         <p>This will:</p>
         <ul>
-          {/* <li>Create Razorpay payment links</li> */}
+          <li>Create Razorpay payment links</li>
           <li>Create pending transactions</li>
         </ul>
+        <Checkbox
+          checked={sendRazorpayLink}
+          onChange={(e) => setSendRazorpayLink(e.target.checked)}
+          style={{ marginTop: 12 }}
+        >
+          Send Razorpay link to customers (SMS & email)
+        </Checkbox>
       </Modal>
     </div>
   );

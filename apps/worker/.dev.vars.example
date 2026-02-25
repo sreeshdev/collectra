@@ -1,5 +1,8 @@
 DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require"
 DIRECT_URL="postgresql://user:password@host:5432/database?sslmode=require"
+
+# For local dev with Hyperdrive: set explicitly if load-env.sh doesn't work, or use Neon pooled URL
+# WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgresql://..."
 JWT_SECRET="your-secret-key-change-this-in-production"
 RAZORPAY_KEY_ID="your-razorpay-key-id"
 RAZORPAY_KEY_SECRET="your-razorpay-key-secret"

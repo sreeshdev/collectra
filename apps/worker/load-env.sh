@@ -5,8 +5,10 @@
 if [ -f .dev.vars ]; then
   export $(grep -v '^#' .dev.vars | xargs)
   # Emulate Hyperdrive locally: wrangler dev needs this to connect to DB
-  if [ -n "$DATABASE_URL" ] && [ -z "$WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE" ]; then
-    export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="$DATABASE_URL"
+  # Set both env var names (Wrangler uses WRANGLER_*, docs mention CLOUDFLARE_*)
+  if [ -n "$DATABASE_URL" ]; then
+    [ -z "$WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE" ] && export WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="$DATABASE_URL"
+    [ -z "$CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE" ] && export CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="$DATABASE_URL"
   fi
 fi
 

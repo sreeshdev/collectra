@@ -5,11 +5,16 @@ import { getPrisma } from "../utils/prisma";
 
 const initiateBulkSchema = z.object({
   customerIds: z.array(z.string().uuid()).min(1),
+  sendRazorpayLink: z.boolean().optional().default(true),
 });
 
 const payments = new Hono().basePath("/payments");
 
-async function createRazorpayPaymentLink(customer: any, env: any) {
+async function createRazorpayPaymentLink(
+  customer: any,
+  env: any,
+  sendLink: boolean = true,
+) {
   const amount = Number(customer.package.price) * 100; // Convert to paise
 
   const response = await fetch("https://api.razorpay.com/v1/payment_links", {
@@ -31,8 +36,8 @@ async function createRazorpayPaymentLink(customer: any, env: any) {
       },
       upi_link: true,
       notify: {
-        sms: true,
-        email: true,
+        sms: sendLink,
+        email: sendLink,
       },
     }),
   });
@@ -92,8 +97,9 @@ const BULK_TX_TIMEOUT_MS = 60_000; // 1 min per request
 // in this request updated or none (rollback on first error). Call with ≤50 IDs per request.
 payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
   try {
+    const user = c.get("user");
     const body = await c.req.json();
-    const { customerIds } = initiateBulkSchema.parse(body);
+    const { customerIds, sendRazorpayLink } = initiateBulkSchema.parse(body);
 
     if (customerIds.length > BULK_MAX_CUSTOMERS_PER_REQUEST) {
       return c.json(
@@ -136,20 +142,22 @@ payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
 
           for (const customer of customers) {
             const price = Number(customer.package.price);
-            const paymentLink = await createRazorpayPaymentLink(
-              customer,
-              c.env,
-            );
-            await prisma.transaction.create({
-              data: {
-                customerId: customer.id,
-                transactionId: paymentLink?.id || "",
-                transactionType: "payment_link",
-                transactionBy: "system", // System user
-                amount: customer.package.price,
-                status: "pending",
-              },
-            });
+            if (sendRazorpayLink) {
+              const paymentLink = await createRazorpayPaymentLink(
+                customer,
+                c.env,
+              );
+              await tx.transaction.create({
+                data: {
+                  customerId: customer.id,
+                  transactionId: paymentLink?.id || "",
+                  transactionType: "payment_link",
+                  transactionBy: user.id, // Admin who initiated bulk payment
+                  amount: customer.package.price,
+                  status: "pending",
+                },
+              });
+            }
             await tx.customer.update({
               where: { id: customer.id },
               data: {
