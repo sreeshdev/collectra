@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { prettyJSON } from "hono/pretty-json";
 import { createPrisma, getPrisma, type Env } from "./utils/prisma";
+import { isDbConnectionError, DB_UNAVAILABLE_MESSAGE } from "./utils/db-retry";
 
 // Import routes
 import authRoutes from "./routes/auth";
@@ -96,7 +97,10 @@ app.notFound((c) => addCorsToResponse(c, c.json({ error: "Not Found" }, 404)));
 app.onError((err, c) => {
   try {
     console.error(err);
-    return addCorsToResponse(c, c.json({ error: "Internal Server Error" }, 500));
+    const message = isDbConnectionError(err)
+      ? DB_UNAVAILABLE_MESSAGE
+      : "Internal Server Error";
+    return addCorsToResponse(c, c.json({ error: message }, 500));
   } catch (handlerErr) {
     console.error("[onError handler failed]", handlerErr);
     const body = JSON.stringify({ error: "Internal Server Error" });
@@ -131,9 +135,11 @@ function buildCorsErrorResponse(request: Request, env: Env, message = "Internal 
 }
 
 function isConnectionTimeout(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  return /timeout exceeded when trying to connect|connection timeout|ETIMEDOUT|Connection terminated unexpectedly/i.test(msg);
+  return isDbConnectionError(err);
 }
+
+/** Max wall-clock time for a request (prevents Worker "hung" when DB suspended) */
+const REQUEST_TIMEOUT_MS = 28_000;
 
 function canRetryRequest(request: Request): boolean {
   const method = request.method;
@@ -151,7 +157,18 @@ export default {
     const boundEnv = { ...env, __executionCtx: ctx } as Env & { __executionCtx: ExecutionContext };
 
     try {
-      const res = await app.fetch(request, boundEnv, ctx);
+      let timeoutId: ReturnType<typeof setTimeout>;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error("REQUEST_TIMEOUT")),
+          REQUEST_TIMEOUT_MS,
+        );
+      });
+      const res = await Promise.race([
+        app.fetch(request, boundEnv, ctx),
+        timeoutPromise,
+      ]);
+      clearTimeout(timeoutId!);
       return res;
     } catch (err) {
       // Retry only for GET/HEAD (no body) - POST body can't be re-read
@@ -164,8 +181,15 @@ export default {
       } else {
         console.error("[Worker crash]", err);
       }
+      const isTimeout =
+        err instanceof Error &&
+        (err.message === "REQUEST_TIMEOUT" || isConnectionTimeout(err));
       try {
-        return buildCorsErrorResponse(request, env);
+        return buildCorsErrorResponse(
+          request,
+          env,
+          isTimeout ? DB_UNAVAILABLE_MESSAGE : undefined,
+        );
       } catch (finalErr) {
         console.error("[Worker fatal - could not build error response]", finalErr);
         return new Response(JSON.stringify({ error: "Internal Server Error" }), {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { hashPassword, verifyPassword } from "../utils/crypto";
 import { authMiddleware } from "../middleware/auth";
 import { getPrisma } from "../utils/prisma";
+import { withDbRetry, isDbConnectionError, DB_UNAVAILABLE_MESSAGE } from "../utils/db-retry";
 
 const loginSchema = z.object({
   mobile: z.string().min(10).max(10),
@@ -30,9 +31,9 @@ auth.post("/login", async (c) => {
     const { mobile, password } = loginSchema.parse(body);
 
     const prisma = getPrisma(c);
-    const user = await prisma.user.findUnique({
-      where: { mobile },
-    });
+    const user = await withDbRetry(() =>
+      prisma.user.findUnique({ where: { mobile } }),
+    );
 
     if (!user) {
       return c.json({ error: "Invalid credentials" }, 401);
@@ -68,7 +69,10 @@ auth.post("/login", async (c) => {
     if (error instanceof z.ZodError) {
       return c.json({ error: "Validation error", details: error.errors }, 400);
     }
-    return c.json({ error: error.message || "Login failed" }, 500);
+    const message = isDbConnectionError(error)
+      ? DB_UNAVAILABLE_MESSAGE
+      : error.message || "Login failed";
+    return c.json({ error: message }, 500);
   }
 });
 
@@ -78,9 +82,10 @@ auth.get("/me", authMiddleware, async (c) => {
     const user = c.get("user");
     const prisma = getPrisma(c);
 
-    const userData = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
+    const userData = await withDbRetry(() =>
+      prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
         id: true,
         role: true,
         name: true,
@@ -90,7 +95,8 @@ auth.get("/me", authMiddleware, async (c) => {
         displayPictureUrl: true,
         createdAt: true,
       },
-    });
+      }),
+    );
 
     if (!userData) {
       return c.json({ error: "User not found" }, 404);
@@ -98,7 +104,10 @@ auth.get("/me", authMiddleware, async (c) => {
 
     return c.json({ user: userData });
   } catch (error: any) {
-    return c.json({ error: error.message || "Failed to fetch user" }, 500);
+    const message = isDbConnectionError(error)
+      ? DB_UNAVAILABLE_MESSAGE
+      : error.message || "Failed to fetch user";
+    return c.json({ error: message }, 500);
   }
 });
 
@@ -110,9 +119,9 @@ auth.post("/change-password", authMiddleware, async (c) => {
     const { currentPassword, newPassword } = changePasswordSchema.parse(body);
 
     const prisma = getPrisma(c);
-    const userData = await prisma.user.findUnique({
-      where: { id: user.id },
-    });
+    const userData = await withDbRetry(() =>
+      prisma.user.findUnique({ where: { id: user.id } }),
+    );
 
     if (!userData) {
       return c.json({ error: "User not found" }, 404);
@@ -127,17 +136,22 @@ auth.post("/change-password", authMiddleware, async (c) => {
     }
 
     const newHash = await hashPassword(newPassword);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash: newHash },
-    });
+    await withDbRetry(() =>
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: newHash },
+      }),
+    );
 
     return c.json({ message: "Password changed successfully" });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return c.json({ error: "Validation error", details: error.errors }, 400);
     }
-    return c.json({ error: error.message || "Failed to change password" }, 500);
+    const message = isDbConnectionError(error)
+      ? DB_UNAVAILABLE_MESSAGE
+      : error.message || "Failed to change password";
+    return c.json({ error: message }, 500);
   }
 });
 
