@@ -117,3 +117,7 @@ npx prisma generate --schema=../../prisma/schema.prisma
 5. Deploy to production
 
 For detailed documentation, see [README.md](./README.md).
+
+TO run worker in local
+cd apps/worker
+./load-env.sh wrangler dev --remote
