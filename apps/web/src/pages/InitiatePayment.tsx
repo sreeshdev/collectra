@@ -115,7 +115,7 @@ export default function InitiatePayment() {
       if (selected) {
         setSelectedCustomerIds(
           filteredCustomers
-            ?.filter((c: Customer) => c.pendingBalance === 0)
+            ?.filter((c: Customer) => c.pendingBalance == 0)
             ?.map((c: Customer) => c.id) || [],
         );
       } else {
