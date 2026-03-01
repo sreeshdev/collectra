@@ -90,7 +90,7 @@ async function sendWhatsAppMessage(
 }
 
 // Max customers per request to avoid Worker timeout/503 (Cloudflare CPU and request limits).
-const BULK_MAX_CUSTOMERS_PER_REQUEST = 50;
+const BULK_MAX_CUSTOMERS_PER_REQUEST = 15;
 const BULK_TX_TIMEOUT_MS = 60_000; // 1 min per request
 
 // Initiate bulk payment (Admin only). Uses a single transaction per request: all customers

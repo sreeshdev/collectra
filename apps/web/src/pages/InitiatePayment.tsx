@@ -30,7 +30,7 @@ export default function InitiatePayment() {
     },
   });
 
-  const BULK_BATCH_SIZE = 50; // Must match API max per request to avoid 503
+  const BULK_BATCH_SIZE = 15; // Must match API max per request to avoid 503
 
   const initiateMutation = useMutation({
     mutationFn: async ({
@@ -114,7 +114,9 @@ export default function InitiatePayment() {
     onSelectAll: (selected: boolean, selectedRows: Customer[]) => {
       if (selected) {
         setSelectedCustomerIds(
-          filteredCustomers?.map((c: Customer) => c.id) || [],
+          filteredCustomers
+            ?.filter((c: Customer) => c.pendingBalance === 0)
+            ?.map((c: Customer) => c.id) || [],
         );
       } else {
         setSelectedCustomerIds([]);
