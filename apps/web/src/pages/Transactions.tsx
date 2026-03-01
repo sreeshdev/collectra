@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
+  Select,
   Space,
   Tag,
   DatePicker,
@@ -30,6 +31,7 @@ export default function Transactions() {
   const [toDate, setToDate] = useState<Dayjs | null>(dayjs().endOf("month"));
   const [searchInput, setSearchInput] = useState("");
   const [searchParam, setSearchParam] = useState("");
+  const [typeStatusFilter, setTypeStatusFilter] = useState<string>("All");
 
   const { data: transactions, isLoading } = useQuery({
     queryKey: [
@@ -37,12 +39,14 @@ export default function Transactions() {
       fromDate?.format("YYYY-MM-DD"),
       toDate?.format("YYYY-MM-DD"),
       searchParam,
+      typeStatusFilter,
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate.format("YYYY-MM-DD"));
       if (toDate) params.append("toDate", toDate.format("YYYY-MM-DD"));
       if (searchParam) params.append("search", searchParam);
+      if (typeStatusFilter && typeStatusFilter !== "All") params.append("filter", typeStatusFilter);
 
       const response = await api.get(`/api/transactions?${params.toString()}`);
       return response.data.transactions;
@@ -205,6 +209,17 @@ export default function Transactions() {
       </div>
 
       <Space style={{ marginBottom: 16 }} wrap>
+        <Select
+          value={typeStatusFilter}
+          onChange={setTypeStatusFilter}
+          style={{ width: 200 }}
+          options={[
+            { value: "All", label: "All" },
+            { value: "Manual_Paid", label: "Manual Paid" },
+            { value: "Payment_Link_Pending", label: "Payment Link Pending" },
+            { value: "Payment_Link_Paid", label: "Payment Link Paid" },
+          ]}
+        />
         <DatePicker
           placeholder="From Date"
           value={fromDate}

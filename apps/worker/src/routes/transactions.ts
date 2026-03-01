@@ -21,6 +21,7 @@ transactions.get("/", authMiddleware, async (c) => {
     const month = c.req.query("month");
     const year = c.req.query("year");
     const search = c.req.query("search")?.trim();
+    const filter = c.req.query("filter"); // All | Manual_Paid | Payment_Link_Pending | Payment_Link_Paid
 
     const prisma = getPrisma(c);
 
@@ -60,6 +61,21 @@ transactions.get("/", authMiddleware, async (c) => {
           { boxNumber: { contains: search, mode: "insensitive" } },
         ],
       };
+    }
+
+    // Filter by type+status
+    if (filter && filter !== "All") {
+      if (filter === "Manual_Paid") {
+        where.transactionType = "manual";
+        where.status = "paid";
+      } else if (filter === "Payment_Link_Pending") {
+        where.transactionType = "payment_link";
+        where.status = "pending";
+      } else if (filter === "Payment_Link_Paid") {
+        // payment_link becomes 'online' when paid via webhook
+        where.transactionType = "online";
+        where.status = "paid";
+      }
     }
 
     // Employee can only see transactions for assigned customers and their own transactions
