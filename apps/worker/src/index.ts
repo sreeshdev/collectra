@@ -28,7 +28,10 @@ const CORS_ALLOWED = new Set([
   "https://collectra.pages.dev",
 ]);
 
-function getAllowedOrigin(origin: string | undefined, env?: Env): string | null {
+function getAllowedOrigin(
+  origin: string | undefined,
+  env?: Env,
+): string | null {
   const allowed = new Set(CORS_ALLOWED);
   if (env?.APP_BASE_URL) allowed.add(env.APP_BASE_URL);
 
@@ -81,13 +84,22 @@ app.route("/api", boxStatusRequestRoutes);
 // Webhook (no auth)
 app.route("/webhooks", webhookRoutes);
 
-function addCorsToResponse(c: { req: { header: (n: string) => string | undefined }; env?: Env }, res: Response): Response {
+function addCorsToResponse(
+  c: { req: { header: (n: string) => string | undefined }; env?: Env },
+  res: Response,
+): Response {
   const allowOrigin = getAllowedOrigin(c.req.header("Origin"), c.env);
   if (allowOrigin) {
     res.headers.set("Access-Control-Allow-Origin", allowOrigin);
     res.headers.set("Access-Control-Allow-Credentials", "true");
-    res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.headers.set(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS",
+    );
+    res.headers.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization",
+    );
   }
   return res;
 }
@@ -104,32 +116,51 @@ app.onError((err, c) => {
   } catch (handlerErr) {
     console.error("[onError handler failed]", handlerErr);
     const body = JSON.stringify({ error: "Internal Server Error" });
-    const res = new Response(body, { status: 500, headers: { "Content-Type": "application/json" } });
+    const res = new Response(body, {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
     const origin = c.req.header("Origin");
     const allowOrigin = getAllowedOrigin(origin ?? undefined, c.env);
     if (allowOrigin) {
       res.headers.set("Access-Control-Allow-Origin", allowOrigin);
       res.headers.set("Access-Control-Allow-Credentials", "true");
-      res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-      res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.headers.set(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS",
+      );
+      res.headers.set(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization",
+      );
     }
     return res;
   }
 });
 
 // Build a JSON 500 response with CORS headers (used when Worker crashes before Hono)
-function buildCorsErrorResponse(request: Request, env: Env, message = "Internal Server Error"): Response {
+function buildCorsErrorResponse(
+  request: Request,
+  env: Env,
+  message = "Internal Server Error",
+): Response {
   const origin = request.headers.get("Origin");
   const allowOrigin = getAllowedOrigin(origin ?? undefined, env);
-  const res = new Response(
-    JSON.stringify({ error: message }),
-    { status: 500, headers: { "Content-Type": "application/json" } },
-  );
+  const res = new Response(JSON.stringify({ error: message }), {
+    status: 500,
+    headers: { "Content-Type": "application/json" },
+  });
   if (allowOrigin) {
     res.headers.set("Access-Control-Allow-Origin", allowOrigin);
     res.headers.set("Access-Control-Allow-Credentials", "true");
-    res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.headers.set(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS",
+    );
+    res.headers.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization",
+    );
   }
   return res;
 }
@@ -143,8 +174,13 @@ const REQUEST_TIMEOUT_MS = 28_000;
 
 function canRetryRequest(request: Request): boolean {
   const method = request.method;
-  const hasBody = request.body != null && (request.headers.get("content-length") !== "0" || request.headers.has("transfer-encoding"));
-  return (method === "GET" || method === "HEAD" || method === "OPTIONS") && !hasBody;
+  const hasBody =
+    request.body != null &&
+    (request.headers.get("content-length") !== "0" ||
+      request.headers.has("transfer-encoding"));
+  return (
+    (method === "GET" || method === "HEAD" || method === "OPTIONS") && !hasBody
+  );
 }
 
 // Cron handler
@@ -154,7 +190,9 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
-    const boundEnv = { ...env, __executionCtx: ctx } as Env & { __executionCtx: ExecutionContext };
+    const boundEnv = { ...env, __executionCtx: ctx } as Env & {
+      __executionCtx: ExecutionContext;
+    };
 
     try {
       let timeoutId: ReturnType<typeof setTimeout>;
@@ -191,11 +229,17 @@ export default {
           isTimeout ? DB_UNAVAILABLE_MESSAGE : undefined,
         );
       } catch (finalErr) {
-        console.error("[Worker fatal - could not build error response]", finalErr);
-        return new Response(JSON.stringify({ error: "Internal Server Error" }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        console.error(
+          "[Worker fatal - could not build error response]",
+          finalErr,
+        );
+        return new Response(
+          JSON.stringify({ error: "Internal Server Error" }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
       }
     }
   },
@@ -208,68 +252,44 @@ export default {
   },
 };
 
+const RESEND_CRON_DAYS = [6, 11, 16, 21, 26]; // Every 5 days
+const RESEND_BATCH_SIZE = 8; // Keep low for free-tier CPU limits
+const RESEND_MEDIUM = "sms" as const; // SMS only to minimize API calls
+
 async function handleCron(env: Env) {
   const prisma = createPrisma(env);
   try {
-    console.log("Cron triggered: Processing monthly payment reminders");
-
     const today = new Date();
     const currentDay = today.getDate();
+    const isResendDay = RESEND_CRON_DAYS.includes(currentDay);
 
-    // Only process on the 5th
-    if (currentDay !== 2) {
-      console.log("Not the 5th, skipping cron");
+    if (!isResendDay) {
+      console.log("Cron: Not a scheduled day, skipping");
       return;
     }
 
-    // Get all customers
-    const customers = await prisma.customer.findMany({
-      include: { package: true },
-    });
+    console.log("Cron triggered: day", currentDay);
 
-    for (const customer of customers) {
-      try {
-        // Check if customer is due for billing
-        const isDue = checkIfDue(customer, today);
+    // 1. Resend payment links (every 5 days) - pending payment_link txns from this month
+    await resendPendingPaymentLinks(prisma, env, today);
 
-        if (isDue) {
-          // Generate payment link
-          // const paymentLink = await createRazorpayPaymentLink(customer, env);
-
-          // Create transaction
-          // await prisma.transaction.create({
-          //   data: {
-          //     customerId: customer.id,
-          //     transactionId: paymentLink.id,
-          //     transactionType: "payment_link",
-          //     transactionBy: "system", // System user
-          //     amount: customer.package.price,
-          //     status: "pending",
-          //   },
-          // });
-
-          // Send WhatsApp reminder
-          // await sendWhatsAppMessage(
-          //   customer,
-          //   paymentLink.short_url || paymentLink.id,
-          //   customer.package.price.toString(),
-          //   env
-          // );
-
-          await prisma.customer.update({
-            where: { id: customer.id, pendingBalance: { equals: 0 } },
-            data: {
-              pendingBalance: {
-                increment: customer.package.price,
-              },
-            },
-          });
-
-          console.log(`Processed customer ${customer.id}`);
+    // 2. Monthly billing (1st only)
+    if (currentDay === 1) {
+      const customers = await prisma.customer.findMany({
+        include: { package: true },
+      });
+      for (const customer of customers) {
+        try {
+          if (checkIfDue(customer, today)) {
+            await prisma.customer.update({
+              where: { id: customer.id, pendingBalance: { equals: 0 } },
+              data: { pendingBalance: { increment: customer.package.price } },
+            });
+            console.log(`Billing: customer ${customer.id}`);
+          }
+        } catch (error) {
+          console.error(`Billing error for ${customer.id}:`, error);
         }
-      } catch (error) {
-        console.error(`Error processing customer ${customer.id}:`, error);
-        // Continue with next customer
       }
     }
 
@@ -279,6 +299,75 @@ async function handleCron(env: Env) {
   } finally {
     await prisma.$disconnect();
   }
+}
+
+async function resendPendingPaymentLinks(
+  prisma: Awaited<ReturnType<typeof createPrisma>>,
+  env: Env,
+  today: Date,
+) {
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthEnd = new Date(
+    today.getFullYear(),
+    today.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+  );
+
+  const batchIndex = RESEND_CRON_DAYS.indexOf(today.getDate());
+  const skip = batchIndex * RESEND_BATCH_SIZE;
+
+  const pending = await prisma.transaction.findMany({
+    where: {
+      transactionType: "payment_link",
+      status: "pending",
+      transactionDate: { gte: monthStart, lte: monthEnd },
+      transactionId: { not: "" }, // Must have Razorpay plink ID
+    },
+    select: { id: true, transactionId: true },
+    orderBy: { createdAt: "asc" },
+    skip,
+    take: RESEND_BATCH_SIZE,
+  });
+
+  if (pending.length === 0) {
+    console.log("Resend: No pending payment links to resend");
+    return;
+  }
+
+  const auth = btoa(`${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`);
+  let success = 0;
+  let failed = 0;
+
+  for (const tx of pending) {
+    try {
+      const res = await fetch(
+        `https://api.razorpay.com/v1/payment_links/${tx.transactionId}/notify_by/${RESEND_MEDIUM}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${auth}`,
+          },
+        },
+      );
+      if (res.ok) {
+        success++;
+        console.log(`Resend: ${tx.transactionId} OK`);
+      } else {
+        failed++;
+        const err = await res.text();
+        console.error(`Resend: ${tx.transactionId} failed:`, err);
+      }
+    } catch (e) {
+      failed++;
+      console.error(`Resend: ${tx.transactionId} error:`, e);
+    }
+  }
+
+  console.log(`Resend: ${success} sent, ${failed} failed`);
 }
 
 function checkIfDue(customer: any, today: Date): boolean {

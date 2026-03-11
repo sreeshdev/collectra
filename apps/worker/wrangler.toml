@@ -3,9 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-# Cron trigger - runs on 2nd of every month at 11:00 UTC
+# Cron triggers:
+# - 1st: monthly billing + payment link resend
+# - 6,11,16,21,26: payment link resend (every 5 days)
 [triggers]
-crons = ["0 11 2 * *"]
+crons = ["0 8 1,6,11,16,21,26 * *"]
 
 [observability]
 [observability.logs]
