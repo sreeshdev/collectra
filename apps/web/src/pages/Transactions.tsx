@@ -10,7 +10,11 @@ import {
   Popconfirm,
   Input,
 } from "antd";
-import { DownloadOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  DownloadOutlined,
+  DeleteOutlined,
+  SendOutlined,
+} from "@ant-design/icons";
 import ResponsiveTable from "../components/ResponsiveTable";
 import api from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
@@ -22,6 +26,10 @@ const startCase = (str: string) => {
     .replace(/^./, (str) => str.toUpperCase())
     .trim();
 };
+
+const isPaymentLinkPending = (r: { transactionType: string; status: string }) =>
+  r.transactionType === "payment_link" && r.status === "pending";
+
 export default function Transactions() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -32,6 +40,7 @@ export default function Transactions() {
   const [searchInput, setSearchInput] = useState("");
   const [searchParam, setSearchParam] = useState("");
   const [typeStatusFilter, setTypeStatusFilter] = useState<string>("All");
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const { data: transactions, isLoading } = useQuery({
     queryKey: [
@@ -46,7 +55,8 @@ export default function Transactions() {
       if (fromDate) params.append("fromDate", fromDate.format("YYYY-MM-DD"));
       if (toDate) params.append("toDate", toDate.format("YYYY-MM-DD"));
       if (searchParam) params.append("search", searchParam);
-      if (typeStatusFilter && typeStatusFilter !== "All") params.append("filter", typeStatusFilter);
+      if (typeStatusFilter && typeStatusFilter !== "All")
+        params.append("filter", typeStatusFilter);
 
       const response = await api.get(`/api/transactions?${params.toString()}`);
       return response.data.transactions;
@@ -69,6 +79,40 @@ export default function Transactions() {
       );
     },
   });
+
+  const resendMutation = useMutation({
+    mutationFn: async (plinkIds: string[]) => {
+      const BATCH = 50;
+      let totalSent = 0;
+      let totalFailed = 0;
+      for (let i = 0; i < plinkIds.length; i += BATCH) {
+        const batch = plinkIds.slice(i, i + BATCH);
+        const { data } = await api.post("/api/payments/resend", {
+          transactionIds: batch,
+        });
+        totalSent += data.sent ?? 0;
+        totalFailed += data.failed ?? 0;
+      }
+      return { sent: totalSent, failed: totalFailed };
+    },
+    onSuccess: (result) => {
+      message.success(
+        `Resend complete: ${result.sent} sent, ${result.failed} failed`,
+      );
+      setSelectedRowKeys([]);
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.error || "Resend failed");
+    },
+  });
+
+  const pendingInView = (transactions ?? []).filter(
+    (r: { transactionType: string; status: string }) => isPaymentLinkPending(r),
+  );
+  const selectAllPending = () => {
+    setSelectedRowKeys(pendingInView.map((r) => r.transactionId));
+  };
 
   const handleExport = async () => {
     try {
@@ -164,31 +208,47 @@ export default function Transactions() {
       dataIndex: ["user", "name"],
       key: "user",
     },
-    ...(user?.role === "ADMIN"
-      ? [
-          {
-            title: "Actions",
-            key: "actions",
-            render: (_: any, record: any) => (
-              <Popconfirm
-                title="Delete Transaction"
-                description="Are you sure you want to delete this transaction? If it was paid, the amount will be added back to the customer's pending balance."
-                onConfirm={() => deleteMutation.mutate(record.id)}
-                okText="Yes"
-                cancelText="No"
-                okButtonProps={{ danger: true }}
-              >
-                <Button
-                  type="text"
-                  danger
-                  icon={<DeleteOutlined />}
-                  loading={deleteMutation.isPending}
-                />
-              </Popconfirm>
-            ),
-          },
-        ]
-      : []),
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_: any, record: any) => (
+        <Space size="small">
+          {isPaymentLinkPending(record) && (
+            <Popconfirm
+              title="Resend payment link"
+              description="Send SMS reminder for this payment link?"
+              onConfirm={() => resendMutation.mutate([record.transactionId])}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Button
+                type="text"
+                icon={<SendOutlined />}
+                loading={resendMutation.isPending}
+                title="Resend link"
+              />
+            </Popconfirm>
+          )}
+          {user?.role === "ADMIN" && (
+            <Popconfirm
+              title="Delete Transaction"
+              description="Are you sure you want to delete this transaction? If it was paid, the amount will be added back to the customer's pending balance."
+              onConfirm={() => deleteMutation.mutate(record.id)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
+            >
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                loading={deleteMutation.isPending}
+              />
+            </Popconfirm>
+          )}
+        </Space>
+      ),
+    },
   ];
 
   return (
@@ -246,6 +306,36 @@ export default function Transactions() {
           onSearch={(value) => setSearchParam(value ?? "")}
           style={{ width: 280 }}
         />
+        {pendingInView.length > 0 && (
+          <>
+            {selectedRowKeys.length > 0 && (
+              <Popconfirm
+                title="Resend selected"
+                description={`Send SMS reminder to ${selectedRowKeys.length} customer(s)? Process will run in batches.`}
+                onConfirm={() => {
+                  const plinkIds = (transactions ?? [])
+                    .filter(
+                      (r) =>
+                        selectedRowKeys.includes(r.id) &&
+                        isPaymentLinkPending(r),
+                    )
+                    .map((r) => r.transactionId);
+                  resendMutation.mutate(plinkIds);
+                }}
+                okText="Yes"
+                cancelText="No"
+              >
+                <Button
+                  type="primary"
+                  icon={<SendOutlined />}
+                  loading={resendMutation.isPending}
+                >
+                  Resend selected ({selectedRowKeys.length})
+                </Button>
+              </Popconfirm>
+            )}
+          </>
+        )}
       </Space>
 
       <ResponsiveTable
@@ -253,6 +343,32 @@ export default function Transactions() {
         dataSource={transactions}
         loading={isLoading}
         rowKey="id"
+        rowSelection={{
+          selectedRowKeys,
+          getCheckboxProps: (record: any) => ({
+            disabled: !isPaymentLinkPending(record),
+          }),
+          onSelect: (record, selected) => {
+            if (selected) {
+              setSelectedRowKeys([...selectedRowKeys, record.transactionId]);
+            } else {
+              setSelectedRowKeys(
+                selectedRowKeys.filter((id) => id !== record.transactionId),
+              );
+            }
+          },
+          onSelectAll: (selected, selectedRows) => {
+            if (selected) {
+              setSelectedRowKeys(
+                transactions
+                  ?.filter(isPaymentLinkPending)
+                  .map((r) => r.transactionId) ?? [],
+              );
+            } else {
+              setSelectedRowKeys([]);
+            }
+          },
+        }}
       />
     </div>
   );

@@ -8,7 +8,13 @@ const initiateBulkSchema = z.object({
   sendRazorpayLink: z.boolean().optional().default(true),
 });
 
+const resendSchema = z.object({
+  transactionIds: z.array(z.string().min(1)).min(1).max(50), // Razorpay plink IDs (plink_xxx)
+});
+
 const payments = new Hono().basePath("/payments");
+
+const RESEND_BATCH_SIZE = 20;
 
 async function createRazorpayPaymentLink(
   customer: any,
@@ -188,6 +194,52 @@ payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
       error?.message ||
       "Bulk update failed. No customers were updated (rollback).";
     return c.json({ error: message }, 500);
+  }
+});
+
+// Resend payment link notifications. Accepts Razorpay plink IDs directly, hits Razorpay API.
+payments.post("/resend", authMiddleware, async (c) => {
+  try {
+    const body = await c.req.json();
+    const { transactionIds } = resendSchema.parse(body);
+
+    const auth = btoa(
+      `${c.env.RAZORPAY_KEY_ID}:${c.env.RAZORPAY_KEY_SECRET}`,
+    );
+    let sent = 0;
+    let failed = 0;
+
+    for (let i = 0; i < transactionIds.length; i += RESEND_BATCH_SIZE) {
+      const batch = transactionIds.slice(i, i + RESEND_BATCH_SIZE);
+      for (const plinkId of batch) {
+        try {
+          const res = await fetch(
+            `https://api.razorpay.com/v1/payment_links/${plinkId}/notify_by/sms`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${auth}`,
+              },
+            },
+          );
+          if (res.ok) sent++;
+          else failed++;
+        } catch {
+          failed++;
+        }
+      }
+    }
+
+    return c.json({ sent, failed, total: transactionIds.length });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return c.json({ error: "Validation error", details: error.errors }, 400);
+    }
+    return c.json(
+      { error: error?.message || "Resend failed" },
+      500,
+    );
   }
 });
 
