@@ -110,9 +110,6 @@ export default function Transactions() {
   const pendingInView = (transactions ?? []).filter(
     (r: { transactionType: string; status: string }) => isPaymentLinkPending(r),
   );
-  const selectAllPending = () => {
-    setSelectedRowKeys(pendingInView.map((r) => r.transactionId));
-  };
 
   const handleExport = async () => {
     try {
@@ -315,11 +312,11 @@ export default function Transactions() {
                 onConfirm={() => {
                   const plinkIds = (transactions ?? [])
                     .filter(
-                      (r) =>
+                      (r: any) =>
                         selectedRowKeys.includes(r.id) &&
                         isPaymentLinkPending(r),
                     )
-                    .map((r) => r.transactionId);
+                    .map((r: any) => r.transactionId);
                   resendMutation.mutate(plinkIds);
                 }}
                 okText="Yes"
