@@ -339,7 +339,7 @@ export default function Transactions() {
         columns={columns}
         dataSource={transactions}
         loading={isLoading}
-        rowKey="id"
+        rowKey="transactionId"
         rowSelection={{
           selectedRowKeys,
           getCheckboxProps: (record: any) => ({
