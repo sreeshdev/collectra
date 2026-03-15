@@ -359,7 +359,7 @@ export default function Transactions() {
               setSelectedRowKeys(
                 transactions
                   ?.filter(isPaymentLinkPending)
-                  .map((r) => r.transactionId) ?? [],
+                  .map((r: any) => r.transactionId) ?? [],
               );
             } else {
               setSelectedRowKeys([]);

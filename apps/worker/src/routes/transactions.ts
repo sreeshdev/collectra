@@ -267,6 +267,16 @@ transactions.post("/manual", authMiddleware, async (c) => {
       },
     });
 
+    // Mark pending payment links for this customer as failed (manual payment overrides them)
+    await prisma.transaction.updateMany({
+      where: {
+        customerId,
+        transactionType: "payment_link",
+        status: "pending",
+      },
+      data: { status: "failed" },
+    });
+
     // Update customer pending balance
     const newPendingBalance = Math.max(0, pendingBalance - amount);
     await prisma.customer.update({
