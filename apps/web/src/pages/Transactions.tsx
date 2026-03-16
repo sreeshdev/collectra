@@ -313,7 +313,7 @@ export default function Transactions() {
                   const plinkIds = (transactions ?? [])
                     .filter(
                       (r: any) =>
-                        selectedRowKeys.includes(r.id) &&
+                        selectedRowKeys.includes(r.transactionId) &&
                         isPaymentLinkPending(r),
                     )
                     .map((r: any) => r.transactionId);
