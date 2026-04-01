@@ -79,12 +79,12 @@ export default function Layout() {
     {
       key: "/box-number-requests",
       icon: <EditOutlined />,
-      label: "Box Number Requests",
+      label: "Change Box Number Requests",
     },
     {
       key: "/box-status-requests",
       icon: <EditOutlined />,
-      label: "Box Status Requests",
+      label: "Activate / Deactivate Customers",
     },
     {
       key: "/settings",

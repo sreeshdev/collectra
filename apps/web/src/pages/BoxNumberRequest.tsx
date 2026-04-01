@@ -118,7 +118,11 @@ export default function BoxNumberRequest() {
     if (!searchText.trim()) return true;
     const q = searchText.toLowerCase().trim();
     const name = (r.customer?.name ?? "").toLowerCase();
-    const currentBox = (r.oldBoxNumber ?? r.customer?.boxNumber ?? "").toLowerCase();
+    const currentBox = (
+      r.oldBoxNumber ??
+      r.customer?.boxNumber ??
+      ""
+    ).toLowerCase();
     const newBox = (r.newBoxNumber ?? "").toLowerCase();
     return name.includes(q) || currentBox.includes(q) || newBox.includes(q);
   });
@@ -158,6 +162,12 @@ export default function BoxNumberRequest() {
               : "orange";
         return <Tag color={color}>{status.toUpperCase()}</Tag>;
       },
+    },
+    {
+      title: "Requested By",
+      dataIndex: ["requester", "name"],
+      key: "requester",
+      render: (name: string) => name || "N/A",
     },
     {
       title: "Requested Date",
@@ -240,7 +250,7 @@ export default function BoxNumberRequest() {
           gap: 12,
         }}
       >
-        <h1 style={{ margin: 0 }}>Box Number Update Requests</h1>
+        <h1 style={{ margin: 0 }}>Change Box Number Requests</h1>
         <Space wrap>
           <Input.Search
             placeholder="Search by customer name or box number"

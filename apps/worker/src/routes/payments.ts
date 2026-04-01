@@ -138,8 +138,8 @@ payments.post("/initiate-bulk", authMiddleware, adminOnly, async (c) => {
           });
 
           const foundIds = new Set(customers.map((c) => c.id));
-          const missingIds = batchIds.filter((id) => !foundIds.has(id));
-          if (missingIds.length > 0) {
+
+          if (foundIds.size === 0) {
             continue;
             // throw new Error(
             //   `Customer(s) not found (batch ${b + 1}/${batches.length}): ${missingIds.slice(0, 5).join(", ")}${missingIds.length > 5 ? ` and ${missingIds.length - 5} more` : ""}`,
@@ -203,9 +203,7 @@ payments.post("/resend", authMiddleware, async (c) => {
     const body = await c.req.json();
     const { transactionIds } = resendSchema.parse(body);
 
-    const auth = btoa(
-      `${c.env.RAZORPAY_KEY_ID}:${c.env.RAZORPAY_KEY_SECRET}`,
-    );
+    const auth = btoa(`${c.env.RAZORPAY_KEY_ID}:${c.env.RAZORPAY_KEY_SECRET}`);
     let sent = 0;
     let failed = 0;
 
@@ -236,10 +234,7 @@ payments.post("/resend", authMiddleware, async (c) => {
     if (error instanceof z.ZodError) {
       return c.json({ error: "Validation error", details: error.errors }, 400);
     }
-    return c.json(
-      { error: error?.message || "Resend failed" },
-      500,
-    );
+    return c.json({ error: error?.message || "Resend failed" }, 500);
   }
 });
 

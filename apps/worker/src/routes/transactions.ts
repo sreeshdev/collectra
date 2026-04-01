@@ -55,12 +55,22 @@ transactions.get("/", authMiddleware, async (c) => {
 
     // Filter by customer name or box number (admin and employee)
     if (search) {
-      where.customer = {
-        OR: [
-          { name: { contains: search, mode: "insensitive" } },
-          { boxNumber: { contains: search, mode: "insensitive" } },
-        ],
-      };
+      where.OR = [
+        {
+          customer: {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { boxNumber: { contains: search, mode: "insensitive" } },
+              { idNumber: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+        {
+          user: {
+            OR: [{ name: { contains: search, mode: "insensitive" } }],
+          },
+        },
+      ];
     }
 
     // Filter by type+status
@@ -106,6 +116,7 @@ transactions.get("/", authMiddleware, async (c) => {
             name: true,
             boxNumber: true,
             mobile: true,
+            idNumber: true,
           },
         },
         user: {

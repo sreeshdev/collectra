@@ -164,6 +164,9 @@ export default function Transactions() {
           <div style={{ fontSize: 12, color: "#999" }}>
             Box: {record.customer.boxNumber}
           </div>
+          <div style={{ fontSize: 12, color: "#888" }}>
+            ID Number: {record.customer.idNumber}
+          </div>
         </div>
       ),
     },

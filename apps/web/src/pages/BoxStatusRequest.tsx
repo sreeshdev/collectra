@@ -77,9 +77,7 @@ export default function BoxStatusRequest() {
       form.resetFields();
     },
     onError: (error: any) => {
-      message.error(
-        error.response?.data?.error || "Failed to create request",
-      );
+      message.error(error.response?.data?.error || "Failed to create request");
     },
   });
 
@@ -176,6 +174,12 @@ export default function BoxStatusRequest() {
       },
     },
     {
+      title: "Requested By",
+      dataIndex: ["requester", "name"],
+      key: "requester",
+      render: (name: string) => name || "N/A",
+    },
+    {
       title: "Requested Date",
       dataIndex: "createdAt",
       key: "createdAt",
@@ -256,7 +260,7 @@ export default function BoxStatusRequest() {
           gap: 12,
         }}
       >
-        <h1 style={{ margin: 0 }}>Box Status Change Requests</h1>
+        <h1 style={{ margin: 0 }}>Activate / Deactivate Customers</h1>
         <Space wrap>
           <Input.Search
             placeholder="Search by customer name or box number"
